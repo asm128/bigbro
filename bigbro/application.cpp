@@ -15,6 +15,7 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 	::gpk::serverStop(app.Server);
 	::gpk::mainWindowDestroy(app.Framework.MainDisplay);
 	::gpk::tcpipShutdown();
+	::gpk::sleep(1000);
 	return 0;
 }
 
@@ -43,8 +44,8 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 	uint64_t																adapter						= 0;
 	{ // load port from config file
 		::gpk::view_const_string												jsonPort					= {};
-		const ::gpk::SJSONReader												& jsonReader						= framework.ReaderJSONConfig;
-		const int32_t															indexObjectApp						= ::gpk::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonPort);
+		const ::gpk::SJSONReader												& jsonReader				= framework.JSONConfig.Reader;
+		const int32_t															indexObjectApp				= ::gpk::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonPort);
 		gwarn_if(errored(indexObjectApp), "Failed to find application node (%s) in json configuration file: '%s'", "application.bigbro", framework.FileNameJSONConfig.begin())
 		else {
 			jsonPort															= "";

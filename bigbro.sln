@@ -26,6 +26,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{221710EC-8C7C-4174-8586-8BA3C5878EB6}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
+		bigbro.json = bigbro.json
+		bigeye.json = bigeye.json
+		copy_json.bat = copy_json.bat
 		LICENSE = LICENSE
 		README.md = README.md
 	EndProjectSection
