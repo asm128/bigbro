@@ -5,13 +5,24 @@
 #ifndef APPLICATION_H_2078934982734
 #define APPLICATION_H_2078934982734
 
-namespace brt // I'm gonna use a different namespace in order to test a few things about the macros.
+namespace bro // I'm gonna use a different namespace in order to test a few things about the macros.
 {
+	struct SServerAsync {
+		::gpk::SUDPServer																	UDPServer							= {};
+		::gpk::array_obj<::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>>	ReceivedPerClient					= {};
+		::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						ClientResponses						= {};
+	};
+
+	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<SServerAsync>>		TKeyValServerAsync;
+
 	struct SApplication {
 		::gpk::SFramework																	Framework;
 		::gpk::ptr_obj<::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>>					Offscreen							= {};
 
-		::gpk::SUDPServer																	Server								= {};
+		::gpk::array_obj<::bro::TKeyValServerAsync>											Servers;
+
+		::bro::SServerAsync																	ServerAsync;
+
 		::gpk::array_obj<::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>>	ReceivedPerClient					= {};
 		::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						ClientResponses						= {};
 

@@ -9,17 +9,20 @@
 //#define GPK_AVOID_LOCAL_APPLICATION_MODULE_MODEL_EXECUTABLE_RUNTIME
 #include "gpk_app_impl.h"
 
-GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
+GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
 
-			::gpk::error_t											cleanup						(::brt::SApplication & app)						{
-	::gpk::serverStop(app.Server);
+			::gpk::error_t											cleanup						(::bro::SApplication & app)						{
+	::gpk::serverStop(app.ServerAsync.UDPServer);
+	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer)
+		::gpk::serverStop(app.Servers[iServer].Val->UDPServer);
+
 	::gpk::mainWindowDestroy(app.Framework.MainDisplay);
 	::gpk::tcpipShutdown();
 	::gpk::sleep(1000);
 	return 0;
 }
 
-			::gpk::error_t											setup						(::brt::SApplication & app)						{
+			::gpk::error_t											setup						(::bro::SApplication & app)						{
 	::gpk::SFramework														& framework					= app.Framework;
 	::gpk::SDisplay															& mainWindow				= framework.MainDisplay;
 	framework.Input.create();
@@ -40,6 +43,7 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 	controlConstraints.AttachSizeToText.x								= app.IdExit;
 	::gpk::controlSetParent(gui, app.IdExit, -1);
 	::gpk::tcpipInitialize();
+
 	uint64_t																port						= 9998;
 	uint64_t																adapter						= 0;
 	{ // load port from config file
@@ -62,13 +66,29 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 			}
 		}
 	}
-	gpk_necall(::gpk::serverStart(app.Server, (uint16_t)port, (int16_t)adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
+
+	gpk_necall(::gpk::serverStart(app.ServerAsync.UDPServer, (uint16_t)port, (int16_t)adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
+	{ // Create CRUD servers.
+		app.Servers.resize(4);
+		const ::gpk::label														serverNames		[]			= 
+			{ "Create"
+			, "Read"
+			, "Update"
+			, "Delete"
+			};
+		for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {
+			++port;
+			::bro::TKeyValServerAsync												& serverKeyVal				= app.Servers[iServer];
+			serverKeyVal.Key													= serverNames[iServer];
+			serverKeyVal.Val.create();
+			::bro::SServerAsync														& serverCRUD				= *serverKeyVal.Val;
+			gpk_necall(::gpk::serverStart(serverCRUD.UDPServer, (uint16_t)port, (int16_t)adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
+		}
+	}
 	return 0;
 }
 
-		::gpk::error_t											update						(::brt::SApplication & app, bool exitSignal)	{
-	::gpk::STimer															timer;
-	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, exitSignal, "Exit requested by runtime.");
+static	::gpk::error_t											updateDisplay						(::bro::SApplication & app)	{
 	{
 		::gpk::mutex_guard														lock						(app.LockRender);
 		app.Framework.MainDisplayOffscreen									= app.Offscreen;
@@ -84,18 +104,22 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 		if(controlState.Execute) {
 			info_printf("Executed %u.", idControl);
 			if(idControl == (uint32_t)app.IdExit)
-				return 1;
+				return ::gpk::APPLICATION_STATE_EXIT;
 		}
 	}
-	::gpk::array_obj<::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>>	& receivedPerClient		= app.ReceivedPerClient;
+	return 0;
+}
+
+		::gpk::error_t											updateCRUDServer			(::bro::SServerAsync & serverAsync)						{
+	::gpk::array_obj<::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>>	& receivedPerClient		= serverAsync.ReceivedPerClient;
 	{	// pick up messages for later processing
-		::gpk::mutex_guard																	lock						(app.Server.Mutex);
-		receivedPerClient.resize(app.Server.Clients.size());
-		for(uint32_t iClient = 0; iClient < app.Server.Clients.size(); ++iClient) {
-			::gpk::ptr_obj<::gpk::SUDPConnection>												conn						= app.Server.Clients[iClient];
+		::gpk::mutex_guard																	lock						(serverAsync.UDPServer.Mutex);
+		receivedPerClient.resize(serverAsync.UDPServer.Clients.size());
+		for(uint32_t iClient = 0; iClient < serverAsync.UDPServer.Clients.size(); ++iClient) {
+			::gpk::ptr_obj<::gpk::SUDPConnection>												conn						= serverAsync.UDPServer.Clients[iClient];
 			::gpk::mutex_guard																	lockRecv					(conn->Queue.MutexReceive);
-			receivedPerClient[iClient]														= app.Server.Clients[iClient]->Queue.Received;
-			app.Server.Clients[iClient]->Queue.Received.clear();
+			receivedPerClient[iClient]														= serverAsync.UDPServer.Clients[iClient]->Queue.Received;
+			serverAsync.UDPServer.Clients[iClient]->Queue.Received.clear();
 		}
 	}
 
@@ -108,22 +132,23 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 				::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
 				::gpk::error_t											contentOffset			= ::gpk::find_sequence_pod(::gpk::view_const_byte{"\0"}, payload);
 				ce_if(errored(contentOffset), "Failed to find environment block stop code.");
+				::gpk::view_const_char									contentBody				= {&payload[contentOffset + 2], payload.size() - contentOffset - 2};
 				//if(payload.size() && (payload.size() > (uint32_t)contentOffset + 2))
-				//	e_if(errored(::writeToPipe(app.ClientIOHandles[iClient], {&payload[contentOffset + 2], payload.size() - contentOffset - 2})), "Failed to write request content to process' stdin.");
+				//	e_if(errored(::writeToPipe(app.ClientIOHandles[iClient], )), "Failed to write request content to process' stdin.");
 			}
 		}
 	}
 	Sleep(10);
-	::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						& clientResponses		= app.ClientResponses;
+	::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						& clientResponses		= serverAsync.ClientResponses;
 	clientResponses.resize(receivedPerClient.size());
 	{	// Read processes output if they're done processing.
 		for(uint32_t iClient = 0; iClient < receivedPerClient.size(); ++iClient) {
 			clientResponses[iClient].resize(receivedPerClient[iClient].size());
 			for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
 				info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
-			//	// generar respuesta proceso
+			// generar respuesta proceso
+				clientResponses[iClient][iMessage]		= "";
 				clientResponses[iClient][iMessage]		= "\r\n{ \"Respuesta\" : \"bleh\"}";
-			//	clientResponses[iClient][iMessage].clear();
 			//	::readFromPipe(process, iohandles, clientResponses[iClient][iMessage]);
 			}
 		}
@@ -131,19 +156,31 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::brt::SApplication, "Module Explorer");
 	for(uint32_t iClient = 0; iClient < clientResponses.size(); ++iClient) {
 		for(uint32_t iMessage = 0; iMessage < clientResponses[iClient].size(); ++iMessage) { // contestar 
 			if(clientResponses[iClient][iMessage].size()) {
-				::gpk::mutex_guard														lock						(app.Server.Mutex);
-				::gpk::ptr_obj<::gpk::SUDPConnection>									conn						= app.Server.Clients[iClient];
+				::gpk::mutex_guard														lock						(serverAsync.UDPServer.Mutex);
+				::gpk::ptr_obj<::gpk::SUDPConnection>									conn						= serverAsync.UDPServer.Clients[iClient];
 				::gpk::connectionPushData(*conn, conn->Queue, clientResponses[iClient][iMessage], true, true);
 				receivedPerClient[iClient][iMessage]		= {};
 			}
 		}
 	}
+	return 0;
+}
+
+		::gpk::error_t											update						(::bro::SApplication & app, bool exitSignal)	{
+	::gpk::STimer															timer;
+	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, exitSignal, "Exit requested by runtime.");
+	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, updateDisplay(app), "Exit requested by runtime.");
+
+	updateCRUDServer(app.ServerAsync);
+	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer)
+		updateCRUDServer(*app.Servers[iServer].Val);
+
 	//timer.Frame();
 	//warning_printf("Update time: %f.", (float)timer.LastTimeSeconds);
 	return 0;
 }
 
-			::gpk::error_t											draw					(::brt::SApplication & app)						{
+			::gpk::error_t											draw					(::bro::SApplication & app)						{
 	::gpk::STimer															timer;
 	::gpk::ptr_obj<::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>>		target;
 	target.create();

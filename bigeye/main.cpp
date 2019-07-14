@@ -11,6 +11,13 @@
 #include <string>		// for ::std::stoi()
 
 static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
+	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;																												\
+	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);																						\
+	if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET")) {																											\
+		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" : \"Invalid request method\" }\r\n"});																		\
+		return 1;																																									\
+	}																																												\
+
 	::gpk::array_pod<char_t>								environmentBlock		= runtimeValues.EntryPointArgs.EnvironmentBlock;
 	{	// Prepare CGI environment and request content packet to send to the service.
 		ree_if(errored(::gpk::environmentBlockFromEnviron(environmentBlock)), "%s", "Failed");
