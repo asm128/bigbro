@@ -1,9 +1,6 @@
 #include "gpk_udp_server.h"
 
 #include "gpk_framework.h"
-#include "gpk_gui.h"
-
-#include <mutex>
 
 #ifndef APPLICATION_H_2078934982734
 #define APPLICATION_H_2078934982734
@@ -16,7 +13,7 @@ namespace brt // I'm gonna use a different namespace in order to test a few thin
 
 		::gpk::SUDPServer																	Server								= {};
 		::gpk::array_obj<::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>>	ReceivedPerClient					= {};
-		::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						ClientResponses;
+		::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						ClientResponses						= {};
 
 		int32_t																				IdExit								= -1;
 

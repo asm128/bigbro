@@ -11,7 +11,7 @@ namespace bro
 		::gpk::SJSONFile						Config						= {};
 	};
 
-	::gpk::error_t							bigEyeInit					(::bro::SBigEye & app, const ::gpk::view_const_string & fileNameJSONConfig);
+	::gpk::error_t							bigEyeLoadConfig			(::bro::SBigEye & app, const ::gpk::view_const_string & fileNameJSONConfig);
 
 } // namespace
 

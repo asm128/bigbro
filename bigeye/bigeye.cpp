@@ -2,7 +2,7 @@
 #include "gpk_json_expression.h"
 #include "gpk_parse.h"
 
-::gpk::error_t								bro::bigEyeInit					(::bro::SBigEye & app, const ::gpk::view_const_string & fileNameJSONConfig)			{
+::gpk::error_t								bro::bigEyeLoadConfig			(::bro::SBigEye & app, const ::gpk::view_const_string & fileNameJSONConfig)			{
 	gpk_necall(::gpk::jsonFileRead(app.Config, fileNameJSONConfig), "Failed to load configuration file: '%s'.", fileNameJSONConfig.begin());
 
 	{	// -- load ip from config file
