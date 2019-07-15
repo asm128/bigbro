@@ -9,40 +9,39 @@
 		: ::gpk::jsonExpressionResolve("databases", configReader, indexBigBroNode, jsonResult) 
 		;
 	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
-	jsonResult															= "";
-	const ::gpk::error_t													databaseArraySize			= ::gpk::jsonArraySize(*configReader[indexObjectDatabases]);
+	jsonResult													= "";
+	const ::gpk::error_t											databaseArraySize			= ::gpk::jsonArraySize(*configReader[indexObjectDatabases]);
 	gpk_necall(databaseArraySize, "%s", "Failed to get database count from config file.");
-	char																	temp[64];
+	char															temp[64];
 	appState.Databases.resize(databaseArraySize);
 	for(uint32_t iDatabase = 0, countDatabases = (uint32_t)databaseArraySize; iDatabase < countDatabases; ++iDatabase) {
 		sprintf_s(temp, "[%u].name", iDatabase);
 		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
-		::bro::TKeyValJSONDB												& jsonDB						= appState.Databases[iDatabase];
-		jsonDB.Key														= jsonResult;
+		::bro::TKeyValJSONDB											& jsonDB					= appState.Databases[iDatabase];
+		jsonDB.Key													= jsonResult;
 
 		sprintf_s(temp, "[%u].type", iDatabase);
-		jsonResult														= {};
-		int32_t																typeFound						= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
-		::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
+		jsonResult													= {};
+		int32_t															typeFound					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+		::gpk::array_pod<char_t>										dbfilename					= jsonDB.Key;
+		dbfilename.append(".json");
 		gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
 		jsonDB.Val.HostType												= (::gpk::view_const_string{"local"} == jsonResult || errored(typeFound)) ? ::bro::DATABASE_HOST_LOCAL : ::bro::DATABASE_HOST_REMOTE;
-
-		if(::bro::DATABASE_HOST_LOCAL == jsonDB.Val.HostType) {
-			// Load json database file.
-			dbfilename.append(".json");
-			gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
-			// Load field bindings
-			sprintf_s(temp, "[%u].bind", iDatabase);
-			::gpk::error_t														indexBindArray					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
-			cw_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin());
-			::gpk::error_t														sizeBindArray					= ::gpk::jsonArraySize(*configReader[indexBindArray]);
-			jsonDB.Val.Bindings.resize(sizeBindArray);
-			for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
-				sprintf_s(temp, "[%u]", iBind);
-				gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
-				jsonDB.Val.Bindings[iBind]										= jsonResult;
-			}
+		// -- Load field bindings
+		sprintf_s(temp, "[%u].bind", iDatabase);
+		::gpk::error_t													indexBindArray				= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+		cw_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin());
+		::gpk::error_t													sizeBindArray				= ::gpk::jsonArraySize(*configReader[indexBindArray]);
+		jsonDB.Val.Bindings.resize(sizeBindArray);
+		for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
+			sprintf_s(temp, "[%u]", iBind);
+			gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
+			jsonDB.Val.Bindings[iBind]									= jsonResult;
 		}
+		if(::bro::DATABASE_HOST_LOCAL != jsonDB.Val.HostType) 
+			continue;
+		// -- Load json database file.
+		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
 	}
 	return 0;
 }
