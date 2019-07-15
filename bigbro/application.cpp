@@ -45,26 +45,26 @@ static		::gpk::error_t											setupGUI					(::bro::SApplication & app)						{
 	return 0;
 }
 
-static		::gpk::error_t											loadConfig					(::bro::SApplication & app)						{
+static		::gpk::error_t											loadServerConfig			(::bro::SApplication & app)						{
 	::gpk::SFramework														& framework					= app.Framework;
 	uint64_t																port						= 9998;
 	uint64_t																adapter						= 0;
 	{ // load port from config file
-		::gpk::view_const_string												jsonPort					= {};
+		::gpk::view_const_string												jsonResult					= {};
 		const ::gpk::SJSONReader												& jsonReader				= framework.JSONConfig.Reader;
-		const int32_t															indexObjectApp				= ::gpk::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonPort);
+		const int32_t															indexObjectApp				= ::gpk::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonResult);
 		gwarn_if(errored(indexObjectApp), "Failed to find application node (%s) in json configuration file: '%s'", "application.bigbro", framework.FileNameJSONConfig.begin())
 		else {
-			jsonPort															= "";
-			gwarn_if(errored(::gpk::jsonExpressionResolve("listen_port"						, jsonReader, indexObjectApp, jsonPort)), "Failed to load config from json! Last contents found: %s.", jsonPort.begin()) 
+			jsonResult															= "";
+			gwarn_if(errored(::gpk::jsonExpressionResolve("listen_port", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
-				::gpk::parseIntegerDecimal(jsonPort, &port);
+				::gpk::parseIntegerDecimal(jsonResult, &port);
 				info_printf("Port to listen on: %u.", (uint32_t)port);
 			}
-			jsonPort															= "";
-			gwarn_if(errored(::gpk::jsonExpressionResolve("adapter"	, jsonReader, indexObjectApp, jsonPort)), "Failed to load config from json! Last contents found: %s.", jsonPort.begin()) 
+			jsonResult															= "";
+			gwarn_if(errored(::gpk::jsonExpressionResolve("adapter"	, jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
-				::gpk::parseIntegerDecimal(jsonPort, &adapter);
+				::gpk::parseIntegerDecimal(jsonResult, &adapter);
 				info_printf("Adapter: %u.", (uint32_t)adapter);
 			}
 		}
@@ -73,6 +73,35 @@ static		::gpk::error_t											loadConfig					(::bro::SApplication & app)					
 	app.Adapter															= (uint16_t)adapter;
 	return 0;
 }
+
+static		::gpk::error_t											loadDBConfig				(::bro::SApplication & app)					{
+	::gpk::view_const_string												jsonResult					= {};
+	const ::gpk::SJSONReader												& jsonReader				= app.Framework.JSONConfig.Reader;
+	const int32_t															indexObjectDatabases		= ::gpk::jsonExpressionResolve("application.bigbro.databases", jsonReader, 0, jsonResult);
+	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
+	jsonResult															= "";
+	const ::gpk::error_t													databaseArraySize			= ::gpk::jsonArraySize(*jsonReader[indexObjectDatabases]);
+	gpk_necall(databaseArraySize, "%s", "Failed to get database count from config file.");
+	char																	temp[64];
+	app.Databases.resize(databaseArraySize);
+	for(uint32_t iDatabase = 0, countDatabases = (uint32_t)databaseArraySize; iDatabase < countDatabases; ++iDatabase) {
+		sprintf_s(temp, "[%u].name", iDatabase);
+		gwarn_if(errored(::gpk::jsonExpressionResolve(temp, jsonReader, indexObjectDatabases, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
+		::gpk::TKeyValJSONFile												& jsonDB						= app.Databases[iDatabase];
+		jsonDB.Key														= jsonResult;
+		::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
+		dbfilename.append(".json");
+		gpk_necall(::gpk::jsonFileRead(jsonDB.Val, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+	}
+	return 0;
+}
+
+static		::gpk::error_t											loadConfig					(::bro::SApplication & app)						{
+	gpk_necall(::loadServerConfig(app), "%s", "Error loading networking configuration");
+	gpk_necall(::loadDBConfig(app), "%s", "Error loading networking configuration");
+	return 0;
+}
+
 			::gpk::error_t											setup						(::bro::SApplication & app)						{
 	gpk_necall(::loadConfig(app), "%s", "Failed to load application configuration.");
 	gpk_necall(::setupGUI(app), "%s", "Failed to set up application graphical interface.");
@@ -150,7 +179,7 @@ static	::gpk::error_t											updateDisplay						(::bro::SApplication & app)	{
 			}
 		}
 	}
-	Sleep(10);
+	::gpk::sleep(2);
 	::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						& clientResponses		= serverAsync.ClientResponses;
 	clientResponses.resize(receivedPerClient.size());
 	{	// Read processes output if they're done processing.

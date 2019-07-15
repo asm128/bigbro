@@ -23,8 +23,8 @@ namespace bro // I'm gonna use a different namespace in order to test a few thin
 		::gpk::array_obj<::bro::TKeyValServerAsync>											Servers								= {};
 		::gpk::array_obj<::gpk::TKeyValJSONFile>											Databases							= {};
 
-		uint16_t																			BasePort;
-		int16_t																				Adapter;
+		uint16_t																			BasePort							= 0;
+		int16_t																				Adapter								= 0;
 
 		int32_t																				IdExit								= -1;
 
