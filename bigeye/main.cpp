@@ -13,17 +13,16 @@
 static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
 	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;
 	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
-	if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET")) {
+	if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET") && 0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "POST")) {
 		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" : \"Invalid request method\" }\r\n"});
 		return 1;
 	}
 
+	// Prepare CGI environment and request content packet to send to the service.
 	::gpk::array_pod<char_t>								environmentBlock		= runtimeValues.EntryPointArgs.EnvironmentBlock;
-	{	// Prepare CGI environment and request content packet to send to the service.
-		ree_if(errored(::gpk::environmentBlockFromEnviron(environmentBlock)), "%s", "Failed");
-		environmentBlock.append(runtimeValues.Content.Body.begin(), runtimeValues.Content.Body.size());
-		environmentBlock.push_back(0);
-	}
+	environmentBlock.append(runtimeValues.Content.Body.begin(), runtimeValues.Content.Body.size());
+	environmentBlock.push_back(0);
+
 	{	// Connect the client to the service.
 		::gpk::SUDPClient										& udpClient				= appState.Client;
 		gpk_necall(::gpk::clientConnect(udpClient), "%s", "error");

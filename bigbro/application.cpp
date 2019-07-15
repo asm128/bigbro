@@ -42,6 +42,11 @@ static	::gpk::error_t										setupGUI					(::bro::SApplication & app)						{
 	controlConstraints.AttachSizeToText.y						= app.IdExit;
 	controlConstraints.AttachSizeToText.x						= app.IdExit;
 	::gpk::controlSetParent(gui, app.IdExit, -1);
+
+	::gpk::ptr_obj<::bro::TRenderTarget>								target;
+	target->resize(app.Framework.MainDisplay.Size, {0xFF, 0x40, 0x7F, 0xFF}, (uint32_t)-1);
+	::gpk::mutex_guard													lock					(app.LockGUI);
+	::gpk::controlDrawHierarchy(*app.Framework.GUI, 0, target->Color.View);
 	return 0;
 }
 
@@ -143,21 +148,6 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 		}
 	}
 
-	{	// Process received payloads
-		for(uint32_t iClient = 0; iClient < receivedPerClient.size(); ++iClient) {
-			for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
-				info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
-				::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
-				::gpk::error_t											contentOffset			= ::gpk::find_sequence_pod(::gpk::view_const_byte{"\0"}, payload);
-				ce_if(errored(contentOffset), "Failed to find environment block stop code.");
-				::gpk::view_const_char									environmentBlock		= {payload.begin(), (uint32_t)contentOffset + 2};
-				::gpk::view_const_char									contentBody				= {&payload[contentOffset + 2], payload.size() - contentOffset - 2};
-				// llamar proceso
-				//if(payload.size() && (payload.size() > (uint32_t)contentOffset + 2))
-				//	e_if(errored(::writeToPipe(app.ClientIOHandles[iClient], )), "Failed to write request content to process' stdin.");
-			}
-		}
-	}
 	::gpk::array_obj<::bro::TUDPResponseQueue>								& clientResponses		= serverAsync.ClientResponses;
 	clientResponses.resize(receivedPerClient.size());
 	{	// Read processes output if they're done processing.
@@ -165,9 +155,14 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 			clientResponses[iClient].resize(receivedPerClient[iClient].size());
 			for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
 				info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
+				::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
+				::gpk::error_t											contentOffset			= ::gpk::find_sequence_pod(::gpk::view_const_byte{"\0"}, payload);
+				ce_if(errored(contentOffset), "Failed to find environment block stop code.");
+				::gpk::view_const_char									environmentBlock		= {payload.begin(), (uint32_t)contentOffset + 2};
+				::gpk::view_const_char									contentBody				= {&payload[contentOffset + 2], payload.size() - contentOffset - 2};
 			// generar respuesta proceso
-				clientResponses[iClient][iMessage]					= "";
-				clientResponses[iClient][iMessage]					= "\r\n{ \"Respuesta\" : \"bleh\"}";
+				clientResponses[iClient][iMessage]					= ::gpk::view_const_string{"\r\n"};
+				clientResponses[iClient][iMessage].append(contentBody);
 			//	::readFromPipe(process, iohandles, clientResponses[iClient][iMessage]);
 			}
 		}
