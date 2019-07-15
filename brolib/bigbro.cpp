@@ -120,6 +120,7 @@ static	::gpk::error_t							generate_record_with_expansion			(::gpk::view_array<
 
 ::gpk::error_t									bro::generate_output_for_db			(::bro::SBigBro & app, const ::gpk::view_const_string & databaseName, int32_t detail, ::gpk::array_pod<char_t> & output)					{
 	int32_t												indexDB									= ::gpk::find(databaseName, ::gpk::view_array<const ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabase>>{app.Databases.begin(), app.Databases.size()});
+	rew_if(-1 == indexDB, "Database not found : %s", databaseName.begin());
 	::gpk::SJSONReader									& dbReader								= app.Databases[indexDB].Val.Table.Reader;
 	::gpk::SJSONNode									& jsonRoot								= *app.Databases[indexDB].Val.Table.Reader.Tree[0];
 	if(detail != -1) { // display detail

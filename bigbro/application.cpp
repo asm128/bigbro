@@ -149,7 +149,8 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::
 				}
 				::bro::loadQuery(query, qsKeyVals);
 				::gpk::view_const_string								dbName						= (packetReceived.Path.size() > 1) ? ::gpk::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::gpk::view_const_string{};
-				::bro::generate_output_for_db(appState, dbName, -1, bytesResponse);
+				if(0 != dbName.size())
+					::bro::generate_output_for_db(appState, dbName, -1, bytesResponse);
 			}
 			if(2 == bytesResponse.size())
 				bytesResponse.append(::gpk::view_const_string{"{}"});

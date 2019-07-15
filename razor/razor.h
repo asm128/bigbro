@@ -13,7 +13,7 @@ namespace razor
 		STARTUPINFOA								StartInfo					= {sizeof(STARTUPINFOA)};
 	};
 
-	struct SBladeApp {
+	struct SRazorApp {
 		::bro::SBigBro								BigBro						= {};
 		::razor::SProcess							Process						= {};
 		::gpk::array_pod<char_t>					CWD							= {};

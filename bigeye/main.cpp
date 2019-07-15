@@ -38,7 +38,7 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 		::gpk::array_pod<char_t>								responseRemote;
 		{	// Send the request data to the connected service.
 			ree_if(udpClient.State != ::gpk::UDP_CONNECTION_STATE_IDLE, "%s", "Failed to connect to server.");
-			gpk_necall(::gpk::connectionPushData(udpClient, udpClient.Queue, bytesToSend, true, true), "%s", "error");	// Enqueue the packet
+			gpk_necall(::gpk::connectionPushData(udpClient, udpClient.Queue, bytesToSend, true, true, 10), "%s", "error");	// Enqueue the packet
 			while(udpClient.State != ::gpk::UDP_CONNECTION_STATE_DISCONNECTED) {	// Loop until we ge the response or the client disconnects
 				gpk_necall(::gpk::clientUpdate(udpClient), "%s", "error");	
 				::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>	received;
