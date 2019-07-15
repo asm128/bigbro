@@ -161,10 +161,13 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 			::bro::SRequestPacket									packetReceived;
 			::bro::requestRead(packetReceived, payload);
 			// Generate response
-			clientResponses[iClient][iMessage]					= ::gpk::view_const_string{"\r\n"};
-			clientResponses[iClient][iMessage].append(packetReceived.Path);
-			clientResponses[iClient][iMessage].append(packetReceived.QueryString);
-			clientResponses[iClient][iMessage].append(packetReceived.ContentBody);
+			::gpk::array_pod<byte_t>								& bytesResponse			= clientResponses[iClient][iMessage];
+			bytesResponse										= ::gpk::view_const_string{"\r\n"};
+			bytesResponse.append(packetReceived.Path		);
+			bytesResponse.append(packetReceived.QueryString	);
+			bytesResponse.append(packetReceived.ContentBody	);
+			if(2 == bytesResponse.size())
+				bytesResponse.append(::gpk::view_const_string{"{}"});
 		}
 	}
 
