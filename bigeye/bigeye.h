@@ -1,5 +1,6 @@
 #include "gpk_json.h"
 #include "gpk_udp_client.h"
+#include "bro_packet.h"
 
 #ifndef BIGEYE_H_641651368135135
 #define BIGEYE_H_641651368135135
