@@ -150,31 +150,30 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 
 	::gpk::array_obj<::bro::TUDPResponseQueue>								& clientResponses		= serverAsync.ClientResponses;
 	clientResponses.resize(receivedPerClient.size());
-	{	// Read processes output if they're done processing.
-		for(uint32_t iClient = 0; iClient < receivedPerClient.size(); ++iClient) {
-			clientResponses[iClient].resize(receivedPerClient[iClient].size());
-			for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
-				info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
-				::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
-				::gpk::error_t											contentOffset			= ::gpk::find_sequence_pod(::gpk::view_const_byte{"\0"}, payload);
-				ce_if(errored(contentOffset), "Failed to find environment block stop code.");
-				::gpk::view_const_char									environmentBlock		= {payload.begin(), (uint32_t)contentOffset + 2};
-				::gpk::view_const_char									contentBody				= {&payload[contentOffset + 2], payload.size() - contentOffset - 2};
-			// generar respuesta proceso
-				clientResponses[iClient][iMessage]					= ::gpk::view_const_string{"\r\n"};
-				clientResponses[iClient][iMessage].append(contentBody);
-			//	::readFromPipe(process, iohandles, clientResponses[iClient][iMessage]);
-			}
+	for(uint32_t iClient = 0; iClient < receivedPerClient.size(); ++iClient) {	// Process received packets.
+		clientResponses[iClient].resize(receivedPerClient[iClient].size());
+		for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
+			info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
+			::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
+			::gpk::error_t											contentOffset			= ::gpk::find_sequence_pod(::gpk::view_const_byte{"\0"}, payload);
+			ce_if(errored(contentOffset), "Failed to find environment block stop code.");
+			::gpk::view_const_char									environmentBlock		= {payload.begin(), (uint32_t)contentOffset + 2};
+			::gpk::view_const_char									contentBody				= {&payload[contentOffset + 2], payload.size() - environmentBlock.size()};
+
+			// Generate response
+			clientResponses[iClient][iMessage]					= ::gpk::view_const_string{"\r\n"};
+			clientResponses[iClient][iMessage].append(contentBody);
 		}
 	}
+
 	for(uint32_t iClient = 0; iClient < clientResponses.size(); ++iClient) {
 		for(uint32_t iMessage = 0; iMessage < clientResponses[iClient].size(); ++iMessage) { // contestar 
-			if(clientResponses[iClient][iMessage].size()) {
-				::gpk::mutex_guard														lock						(serverAsync.UDPServer.Mutex);
-				::gpk::ptr_obj<::gpk::SUDPConnection>									conn						= serverAsync.UDPServer.Clients[iClient];
-				::gpk::connectionPushData(*conn, conn->Queue, clientResponses[iClient][iMessage], true, true);
-				receivedPerClient[iClient][iMessage]		= {};
-			}
+			if(0 == clientResponses[iClient][iMessage].size()) 
+				continue;
+			::gpk::mutex_guard														lock						(serverAsync.UDPServer.Mutex);
+			::gpk::ptr_obj<::gpk::SUDPConnection>									conn						= serverAsync.UDPServer.Clients[iClient];
+			::gpk::connectionPushData(*conn, conn->Queue, clientResponses[iClient][iMessage], true, true);
+			receivedPerClient[iClient][iMessage]							= {};
 		}
 	}
 	return 0;
