@@ -1,4 +1,7 @@
 #include "application.h"
+
+#include "bro_packet.h"
+
 #include "gpk_bitmap_file.h"
 #include "gpk_tcpip.h"
 #include "gpk_find.h"
@@ -155,14 +158,13 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 		for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
 			info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
 			::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
-			::gpk::error_t											contentOffset			= ::gpk::find_sequence_pod(::gpk::view_const_byte{"\0"}, payload);
-			ce_if(errored(contentOffset), "Failed to find environment block stop code.");
-			::gpk::view_const_char									environmentBlock		= {payload.begin(), (uint32_t)contentOffset + 2};
-			::gpk::view_const_char									contentBody				= {&payload[contentOffset + 2], payload.size() - environmentBlock.size()};
-
+			::bro::SRequestPacket									packetReceived;
+			::bro::requestRead(packetReceived, payload);
 			// Generate response
 			clientResponses[iClient][iMessage]					= ::gpk::view_const_string{"\r\n"};
-			clientResponses[iClient][iMessage].append(contentBody);
+			clientResponses[iClient][iMessage].append(packetReceived.Path);
+			clientResponses[iClient][iMessage].append(packetReceived.QueryString);
+			clientResponses[iClient][iMessage].append(packetReceived.ContentBody);
 		}
 	}
 

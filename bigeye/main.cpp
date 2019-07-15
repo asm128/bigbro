@@ -1,5 +1,7 @@
 #include "bigeye.h"
 
+#include "bro_packet.h"
+
 #include "gpk_cgi.h"
 #include "gpk_cgi_module.h"
 #include "gpk_string_helper.h"
@@ -18,10 +20,15 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 		return 1;
 	}
 
-	// Prepare CGI environment and request content packet to send to the service.
-	::gpk::array_pod<char_t>								environmentBlock		= runtimeValues.EntryPointArgs.EnvironmentBlock;
-	environmentBlock.append(runtimeValues.Content.Body.begin(), runtimeValues.Content.Body.size());
-	environmentBlock.push_back(0);
+	::gpk::array_pod<byte_t>								bytesToSend;
+	::bro::SRequestPacket									packetToSend;
+	{
+		packetToSend.Method									= 0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET") ? ::gpk::HTTP_METHOD_POST : ::gpk::HTTP_METHOD_GET;
+		::gpk::find("PATH_INFO"		, environViews, packetToSend.Path);
+		::gpk::find("QUERY_STRING"	, environViews, packetToSend.QueryString);
+		packetToSend.ContentBody							= runtimeValues.Content.Body;
+	}
+	::bro::requestWrite(packetToSend, bytesToSend);
 
 	{	// Connect the client to the service.
 		::gpk::SUDPClient										& udpClient				= appState.Client;
@@ -29,7 +36,7 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 		::gpk::array_pod<char_t>								responseRemote;
 		{	// Send the request data to the connected service.
 			ree_if(udpClient.State != ::gpk::UDP_CONNECTION_STATE_IDLE, "%s", "Failed to connect to server.");
-			gpk_necall(::gpk::connectionPushData(udpClient, udpClient.Queue, environmentBlock, true, true), "%s", "error");	// Enqueue the packet
+			gpk_necall(::gpk::connectionPushData(udpClient, udpClient.Queue, bytesToSend, true, true), "%s", "error");	// Enqueue the packet
 			while(udpClient.State != ::gpk::UDP_CONNECTION_STATE_DISCONNECTED) {	// Loop until we ge the response or the client disconnects
 				gpk_necall(::gpk::clientUpdate(udpClient), "%s", "error");	
 				::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>	received;
