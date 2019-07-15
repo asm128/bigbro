@@ -8,11 +8,12 @@
 #include "gpk_process.h"
 
 #include "gpk_parse.h"
+#include "gpk_cgi.h"
 
 //#define GPK_AVOID_LOCAL_APPLICATION_MODULE_MODEL_EXECUTABLE_RUNTIME
 #include "gpk_app_impl.h"
 
-GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
+GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Big Bro v0.1");
 
 		::gpk::error_t										cleanup						(::bro::SApplication & app)						{
 	::gpk::serverStop(app.ServerAsync.UDPServer);
@@ -22,34 +23,6 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
 	::gpk::mainWindowDestroy(app.Framework.MainDisplay);
 	::gpk::tcpipShutdown();
 	::gpk::sleep(1000);
-	return 0;
-}
-
-static	::gpk::error_t										setupGUI					(::bro::SApplication & app)						{
-	::gpk::SFramework												& framework					= app.Framework;
-	::gpk::SDisplay													& mainWindow				= framework.MainDisplay;
-	framework.Input.create();
-	mainWindow.Size												= {320, 200};
-	gerror_if(errored(::gpk::mainWindowCreate(mainWindow, framework.RuntimeValues.PlatformDetail, framework.Input)), "Failed to create main window why?????!?!?!?!?");
-	::gpk::SGUI														& gui						= *framework.GUI;
-	app.IdExit													= ::gpk::controlCreate(gui);
-	::gpk::SControl													& controlExit				= gui.Controls.Controls[app.IdExit];
-	controlExit.Area											= {{0, 0}, {64, 20}};
-	controlExit.Border											= {1, 1, 1, 1};
-	controlExit.Margin											= {1, 1, 1, 1};
-	controlExit.Align											= ::gpk::ALIGN_BOTTOM_RIGHT;
-	::gpk::SControlText												& controlText				= gui.Controls.Text[app.IdExit];
-	controlText.Text											= "Exit";
-	controlText.Align											= ::gpk::ALIGN_CENTER;
-	::gpk::SControlConstraints										& controlConstraints		= gui.Controls.Constraints[app.IdExit];
-	controlConstraints.AttachSizeToText.y						= app.IdExit;
-	controlConstraints.AttachSizeToText.x						= app.IdExit;
-	::gpk::controlSetParent(gui, app.IdExit, -1);
-
-	::gpk::ptr_obj<::bro::TRenderTarget>								target;
-	target->resize(app.Framework.MainDisplay.Size, {0xFF, 0x40, 0x7F, 0xFF}, (uint32_t)-1);
-	::gpk::mutex_guard													lock					(app.LockGUI);
-	::gpk::controlDrawHierarchy(*app.Framework.GUI, 0, target->Color.View);
 	return 0;
 }
 
@@ -88,6 +61,7 @@ static	::gpk::error_t										loadConfig					(::bro::SApplication & app)						{
 	return 0;
 }
 
+		::gpk::error_t										setupGUI					(::bro::SApplication & app);	// application_gui.cpp
 		::gpk::error_t										setup						(::bro::SApplication & app)						{
 	gpk_necall(::loadConfig(app), "%s", "Failed to load application configuration.");
 	gpk_necall(::setupGUI(app), "%s", "Failed to set up application graphical interface.");
@@ -138,7 +112,7 @@ static	::gpk::error_t										updateDisplay						(::bro::SApplication & app)	{
 	return 0;
 }
 
-static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverAsync)						{
+static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::bro::SServerAsync & serverAsync)						{
 	::gpk::array_obj<::bro::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
 	{	// Pick up messages for later processing in order to clear receive queues to avoid the connection's extra work.
 		::gpk::mutex_guard																	lock						(serverAsync.UDPServer.Mutex);
@@ -160,12 +134,23 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 			::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
 			::bro::SRequestPacket									packetReceived;
 			::bro::requestRead(packetReceived, payload);
-			// Generate response
 			::gpk::array_pod<byte_t>								& bytesResponse			= clientResponses[iClient][iMessage];
 			bytesResponse										= ::gpk::view_const_string{"\r\n"};
-			bytesResponse.append(packetReceived.Path		);
-			bytesResponse.append(packetReceived.QueryString	);
-			bytesResponse.append(packetReceived.ContentBody	);
+			// Generate response
+			{
+				::bro::SQuery											& query						= appState.Query;
+				::gpk::array_obj<::gpk::TKeyValConstString>				qsKeyVals;
+				::gpk::array_obj<::gpk::view_const_string>				queryStringElements			= {};
+				::gpk::querystring_split({packetReceived.QueryString.begin(), packetReceived.QueryString.size()}, queryStringElements);
+				qsKeyVals.resize(queryStringElements.size());
+				for(uint32_t iKeyVal = 0; iKeyVal < qsKeyVals.size(); ++iKeyVal) {
+					::gpk::TKeyValConstString								& keyValDst				= qsKeyVals[iKeyVal];
+					::gpk::keyval_split(queryStringElements[iKeyVal], keyValDst);
+				}
+				::bro::loadQuery(query, qsKeyVals);
+				::gpk::view_const_string								dbName						= (packetReceived.Path.size() > 1) ? ::gpk::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::gpk::view_const_string{};
+				::bro::generate_output_for_db(appState, dbName, -1, bytesResponse);
+			}
 			if(2 == bytesResponse.size())
 				bytesResponse.append(::gpk::view_const_string{"{}"});
 		}
@@ -189,18 +174,23 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, exitSignal, "Exit requested by runtime.");
 	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, updateDisplay(app), "Exit requested by runtime.");
 
-	updateCRUDServer(app.ServerAsync);
+	updateCRUDServer(app.BigBro, app.ServerAsync);
 	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {
-		updateCRUDServer(*app.Servers[iServer].Val);
+		updateCRUDServer(app.BigBro, *app.Servers[iServer].Val);
 		::gpk::sleep(1);
 	}
+
+	char		buffer[256]		= {};
+	uint32_t	maxCount		= ::gpk::size(buffer);
+	::gpk_moduleTitle(buffer, &maxCount);
+	SetWindowTextA(app.Framework.MainDisplay.PlatformDetail.WindowHandle, buffer);
 
 	timer.Frame();
 	//warning_printf("Update time: %f.", (float)timer.LastTimeSeconds);
 	return 0;
 }
 
-#define BIGBRO_DISABLE_DISPLAY
+//#define BIGBRO_DISABLE_DISPLAY
 
 		::gpk::error_t										draw					(::bro::SApplication & app)						{
 #if defined BIGBRO_DISABLE_DISPLAY

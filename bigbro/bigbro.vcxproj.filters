@@ -21,6 +21,9 @@
     <ClCompile Include="bigbro.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="application_gui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h">
