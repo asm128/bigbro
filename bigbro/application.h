@@ -19,12 +19,12 @@ namespace bro // I'm gonna use a different namespace in order to test a few thin
 		::gpk::SFramework																	Framework;
 		::gpk::ptr_obj<::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>>					Offscreen							= {};
 
-		::gpk::array_obj<::bro::TKeyValServerAsync>											Servers;
+		::bro::SServerAsync																	ServerAsync							= {};
+		::gpk::array_obj<::bro::TKeyValServerAsync>											Servers								= {};
+		::gpk::array_obj<::gpk::TKeyValJSONFile>											Databases							= {};
 
-		::bro::SServerAsync																	ServerAsync;
-
-		::gpk::array_obj<::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>>	ReceivedPerClient					= {};
-		::gpk::array_obj<::gpk::array_obj<::gpk::array_pod<char_t>>>						ClientResponses						= {};
+		uint16_t																			BasePort;
+		int16_t																				Adapter;
 
 		int32_t																				IdExit								= -1;
 

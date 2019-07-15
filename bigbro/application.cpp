@@ -22,7 +22,7 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
 	return 0;
 }
 
-			::gpk::error_t											setup						(::bro::SApplication & app)						{
+static		::gpk::error_t											setupGUI					(::bro::SApplication & app)						{
 	::gpk::SFramework														& framework					= app.Framework;
 	::gpk::SDisplay															& mainWindow				= framework.MainDisplay;
 	framework.Input.create();
@@ -42,8 +42,11 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
 	controlConstraints.AttachSizeToText.y								= app.IdExit;
 	controlConstraints.AttachSizeToText.x								= app.IdExit;
 	::gpk::controlSetParent(gui, app.IdExit, -1);
-	::gpk::tcpipInitialize();
+	return 0;
+}
 
+static		::gpk::error_t											loadConfig					(::bro::SApplication & app)						{
+	::gpk::SFramework														& framework					= app.Framework;
 	uint64_t																port						= 9998;
 	uint64_t																adapter						= 0;
 	{ // load port from config file
@@ -66,10 +69,19 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
 			}
 		}
 	}
-
-	gpk_necall(::gpk::serverStart(app.ServerAsync.UDPServer, (uint16_t)port, (int16_t)adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
+	app.BasePort														= (uint16_t)port;
+	app.Adapter															= (uint16_t)adapter;
+	return 0;
+}
+			::gpk::error_t											setup						(::bro::SApplication & app)						{
+	gpk_necall(::loadConfig(app), "%s", "Failed to load application configuration.");
+	gpk_necall(::setupGUI(app), "%s", "Failed to set up application graphical interface.");
+	::gpk::tcpipInitialize();
+	// Put every server to listen.
+	uint16_t																port						= (uint16_t)app.BasePort;
+	gpk_necall(::gpk::serverStart(app.ServerAsync.UDPServer, port, (int16_t)app.Adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
 	{ // Create CRUD servers.
-		app.Servers.resize(4);
+		app.Servers.resize(8);
 		const ::gpk::label														serverNames		[]			= 
 			{ "Create"
 			, "Read"
@@ -79,10 +91,10 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Module Explorer");
 		for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {
 			++port;
 			::bro::TKeyValServerAsync												& serverKeyVal				= app.Servers[iServer];
-			serverKeyVal.Key													= serverNames[iServer];
+			serverKeyVal.Key													= serverNames[iServer % 4];
 			serverKeyVal.Val.create();
 			::bro::SServerAsync														& serverCRUD				= *serverKeyVal.Val;
-			gpk_necall(::gpk::serverStart(serverCRUD.UDPServer, (uint16_t)port, (int16_t)adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
+			gpk_necall(::gpk::serverStart(serverCRUD.UDPServer, (uint16_t)port, (int16_t)app.Adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
 		}
 	}
 	return 0;
