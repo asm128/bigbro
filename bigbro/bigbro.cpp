@@ -25,7 +25,7 @@
 		int32_t																typeFound						= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 		::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
 		gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
-		jsonDB.Val.HostType												= (jsonResult == "local" || errored(typeFound)) ? ::bro::DATABASE_HOST_REMOTE : ::bro::DATABASE_HOST_LOCAL;
+		jsonDB.Val.HostType												= (::gpk::view_const_string{"local"} == jsonResult || errored(typeFound)) ? ::bro::DATABASE_HOST_LOCAL : ::bro::DATABASE_HOST_REMOTE;
 
 		if(::bro::DATABASE_HOST_LOCAL == jsonDB.Val.HostType) {
 			// Load json database file.

@@ -201,7 +201,12 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 	return 0;
 }
 
+#define BIGBRO_DISABLE_DISPLAY
+
 		::gpk::error_t										draw					(::bro::SApplication & app)						{
+#if defined BIGBRO_DISABLE_DISPLAY
+	(void)app;
+#else
 	::gpk::STimer														timer;
 	::gpk::ptr_obj<::bro::TRenderTarget>								target;
 	target.create();
@@ -217,5 +222,6 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SServerAsync & serverA
 	timer.Frame();
 	//warning_printf("Draw time: %f.", (float)timer.LastTimeSeconds);
 	::gpk::sleep(15);
+#endif
 	return 0;
 }

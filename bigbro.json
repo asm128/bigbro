@@ -15,7 +15,7 @@
 		,	"adapter"		: "1"
 		,	"databases"		: 
 			[	{ "type" : "local", "name": "website"	, "bind" : ["website"			, ] }
-			,	{ "name": "user"		, "bind" : ["manager"			, ] }
+			,	{ "type" : "local", "name": "user"		, "bind" : ["manager"			, ] }
 			,	{ "type" : "local", "name": "publisher"	, "bind" : ["publisher"			, ] }
 			,	{ "type" : "local", "name": "company"	, "bind" : ["owner"				, ] }
 			]
