@@ -12,7 +12,7 @@
 
 #include <string>		// for ::std::stoi()
 
-static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
+static	int											cgiBootstrap					(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
 	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;
 	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
 	::gpk::view_const_string								method;
@@ -33,7 +33,7 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 	::bro::requestWrite(packetToSend, bytesToSend);
 
 	{	// Connect the client to the service.
-		::gpk::SUDPClient										& udpClient				= appState.Client;
+		::gpk::SUDPClient										& udpClient						= appState.Client;
 		gpk_necall(::gpk::clientConnect(udpClient), "%s", "error");
 		::gpk::array_pod<char_t>								responseRemote;
 		{	// Send the request data to the connected service.
@@ -43,7 +43,7 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 				gpk_necall(::gpk::clientUpdate(udpClient), "%s", "error");	
 				::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>	received;
 				{	// pick up messages for later processing
-					::gpk::mutex_guard										lockRecv				(udpClient.Queue.MutexReceive);
+					::gpk::mutex_guard										lockRecv						(udpClient.Queue.MutexReceive);
 					received											= udpClient.Queue.Received;
 					udpClient.Queue.Received.clear();
 				}
@@ -85,9 +85,9 @@ static int											cgiMain				(int argc, char** argv, char**envv)	{
 			);
 			html.push_back('\0');
 			printf("%s", html.begin());
-	#ifdef GPK_WINDOWS
+#ifdef GPK_WINDOWS
 			OutputDebugStringA(html.begin());
-	#endif
+#endif
 		}
 		gpk_necall(::gpk::tcpipShutdown(), "Failed to shut down network subsystem. %s", "Why??!?");
 	}

@@ -21,7 +21,7 @@
 	controlConstraints.AttachSizeToText.x						= app.IdExit;
 	::gpk::controlSetParent(gui, app.IdExit, -1);
 
-	::gpk::ptr_obj<::bro::TRenderTarget>								target;
+	::gpk::ptr_obj<::bro::TRenderTarget>							target;
 	target->resize(app.Framework.MainDisplay.Size, {0xFF, 0x40, 0x7F, 0xFF}, (uint32_t)-1);
 	::gpk::mutex_guard													lock					(app.LockGUI);
 	::gpk::controlDrawHierarchy(*app.Framework.GUI, 0, target->Color.View);

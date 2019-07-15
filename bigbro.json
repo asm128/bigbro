@@ -1,12 +1,6 @@
 {	"assets": 
-	{	"images"		: { "path" : "../gpk_data/images"		}
-	,	"sounds"		: { "path" : "../gpk_data/sounds"		}
-	,	"scripts"		: { "path" : "../gpk_data/scripts"		}
-	,	"pngsuite"		: { "path" : "../gpk_data/pngsuite"		}
-	,	"html"			: { "path" : "../gpk_data/html"			}
-	,	"javascript"	: { "path" : "../gpk_data/js"			}
-	,	"jsondb"		: { "path" : "../gpk_data/jsondb"		}
-	,	"cache"			: { "path" : "../gpk_data/blade_cache"	}
+	{	"jsondb"		: { "path" : "../gpk_data/jsondb"		}
+	,	"jsondb_cache"	: { "path" : "../gpk_data/razor_cache"	}
 	},
 	"application": 
 	{	

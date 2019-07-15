@@ -17,8 +17,9 @@ namespace bro // I'm gonna use a different namespace in order to test a few thin
 		::gpk::array_obj<::bro::TUDPResponseQueue>										ClientResponses						= {};
 	};
 
-	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<::bro::SServerAsync>>	TKeyValServerAsync;
-	typedef ::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>								TRenderTarget;
+	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<::bro::SServerAsync>>	
+																					TKeyValServerAsync;
+	typedef ::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>						TRenderTarget;
 
 	struct SApplication {
 		::gpk::SFramework																Framework;

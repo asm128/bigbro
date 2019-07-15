@@ -12,6 +12,7 @@
 
 //#define GPK_AVOID_LOCAL_APPLICATION_MODULE_MODEL_EXECUTABLE_RUNTIME
 #include "gpk_app_impl.h"
+#include "gpk_stdstring.h"
 
 GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Big Bro v0.1");
 
@@ -21,8 +22,9 @@ GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Big Bro v0.1");
 		::gpk::serverStop(app.Servers[iServer].Val->UDPServer);
 
 	::gpk::mainWindowDestroy(app.Framework.MainDisplay);
+	::gpk::sleep(500);
 	::gpk::tcpipShutdown();
-	::gpk::sleep(1000);
+	::gpk::sleep(500);
 	return 0;
 }
 
@@ -69,8 +71,9 @@ static	::gpk::error_t										loadConfig					(::bro::SApplication & app)						{
 	// Put every server to listen.
 	uint16_t														port						= (uint16_t)app.BasePort;
 	gpk_necall(::gpk::serverStart(app.ServerAsync.UDPServer, port, (int16_t)app.Adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
+	++port;
 	{ // Create CRUD servers.
-		app.Servers.resize(8);
+		app.Servers.resize(8);	// TODO: Move server count to JSON config file.
 		const ::gpk::label												serverNames		[]			= 
 			{ "Create"
 			, "Read"
@@ -78,13 +81,13 @@ static	::gpk::error_t										loadConfig					(::bro::SApplication & app)						{
 			, "Delete"
 			};
 		for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {
-			++port;
 			::bro::TKeyValServerAsync										& serverKeyVal				= app.Servers[iServer];
 			serverKeyVal.Key											= serverNames[iServer % 4];
 			serverKeyVal.Val.create();
 			::bro::SServerAsync												& serverCRUD				= *serverKeyVal.Val;
 			gpk_necall(::gpk::serverStart(serverCRUD.UDPServer, (uint16_t)port, (int16_t)app.Adapter), "Failed to start server on port %u. Port busy?", (uint32_t)port);
 			::gpk::sleep(100);
+			++port;
 		}
 	}
 	return 0;
@@ -112,6 +115,35 @@ static	::gpk::error_t										updateDisplay						(::bro::SApplication & app)	{
 	return 0;
 }
 
+static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, const ::gpk::view_const_byte & payload, ::gpk::array_pod<byte_t> & bytesResponse)						{
+	::bro::SRequestPacket											packetReceived;
+	::bro::requestRead(packetReceived, payload);
+	// Generate response
+	::gpk::array_obj<::gpk::TKeyValConstString>						qsKeyVals;
+	::gpk::array_obj<::gpk::view_const_string>						queryStringElements			= {};
+	::gpk::querystring_split({packetReceived.QueryString.begin(), packetReceived.QueryString.size()}, queryStringElements);
+	qsKeyVals.resize(queryStringElements.size());
+	for(uint32_t iKeyVal = 0; iKeyVal < qsKeyVals.size(); ++iKeyVal) {
+		::gpk::TKeyValConstString										& keyValDst					= qsKeyVals[iKeyVal];
+		::gpk::keyval_split(queryStringElements[iKeyVal], keyValDst);
+	}
+	::bro::loadQuery(appState.Query, qsKeyVals);
+	::gpk::view_const_string										dbName						= (packetReceived.Path.size() > 1) ? ::gpk::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::gpk::view_const_string{};;
+	::gpk::view_const_string										strDetail					= {};
+	const ::gpk::error_t											indexOfLastBar				= ::gpk::rfind('/', dbName);
+	const uint32_t													startOfDetail				= (uint32_t)(indexOfLastBar + 1);
+	uint64_t														detail						= (uint64_t)-1LL;
+	if(indexOfLastBar > 0 && startOfDetail < dbName.size()) {
+		strDetail													= {&dbName[startOfDetail], dbName.size() - startOfDetail};
+		dbName														= {dbName.begin(), (uint32_t)indexOfLastBar};
+		if(strDetail.size())
+			::gpk::stoull(strDetail, &detail);
+	}
+	if(0 != dbName.size())
+		::bro::generate_output_for_db(appState, dbName, (uint32_t)detail, bytesResponse);
+	return 0;
+}
+
 static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::bro::SServerAsync & serverAsync)						{
 	::gpk::array_obj<::bro::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
 	{	// Pick up messages for later processing in order to clear receive queues to avoid the connection's extra work.
@@ -132,33 +164,16 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::
 		for(uint32_t iMessage = 0; iMessage < receivedPerClient[iClient].size(); ++iMessage) {
 			info_printf("Client %i received: %s.", iClient, receivedPerClient[iClient][iMessage]->Payload.begin());	
 			::gpk::view_const_byte									payload					= receivedPerClient[iClient][iMessage]->Payload;
-			::bro::SRequestPacket									packetReceived;
-			::bro::requestRead(packetReceived, payload);
 			::gpk::array_pod<byte_t>								& bytesResponse			= clientResponses[iClient][iMessage];
 			bytesResponse										= ::gpk::view_const_string{"\r\n"};
-			// Generate response
-			{
-				::bro::SQuery											& query						= appState.Query;
-				::gpk::array_obj<::gpk::TKeyValConstString>				qsKeyVals;
-				::gpk::array_obj<::gpk::view_const_string>				queryStringElements			= {};
-				::gpk::querystring_split({packetReceived.QueryString.begin(), packetReceived.QueryString.size()}, queryStringElements);
-				qsKeyVals.resize(queryStringElements.size());
-				for(uint32_t iKeyVal = 0; iKeyVal < qsKeyVals.size(); ++iKeyVal) {
-					::gpk::TKeyValConstString								& keyValDst				= qsKeyVals[iKeyVal];
-					::gpk::keyval_split(queryStringElements[iKeyVal], keyValDst);
-				}
-				::bro::loadQuery(query, qsKeyVals);
-				::gpk::view_const_string								dbName						= (packetReceived.Path.size() > 1) ? ::gpk::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::gpk::view_const_string{};
-				if(0 != dbName.size())
-					::bro::generate_output_for_db(appState, dbName, -1, bytesResponse);
-			}
+			::processPayload(appState, payload, bytesResponse);
 			if(2 == bytesResponse.size())
 				bytesResponse.append(::gpk::view_const_string{"{}"});
 		}
 	}
 
 	for(uint32_t iClient = 0; iClient < clientResponses.size(); ++iClient) {
-		for(uint32_t iMessage = 0; iMessage < clientResponses[iClient].size(); ++iMessage) { // contestar 
+		for(uint32_t iMessage = 0; iMessage < clientResponses[iClient].size(); ++iMessage) { // Send generated responses 
 			if(0 == clientResponses[iClient][iMessage].size()) 
 				continue;
 			::gpk::mutex_guard														lock						(serverAsync.UDPServer.Mutex);
@@ -175,9 +190,9 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::
 	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, exitSignal, "Exit requested by runtime.");
 	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, updateDisplay(app), "Exit requested by runtime.");
 
-	updateCRUDServer(app.BigBro, app.ServerAsync);
-	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {
-		updateCRUDServer(app.BigBro, *app.Servers[iServer].Val);
+	::updateCRUDServer(app.BigBro, app.ServerAsync);
+	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {	// Update CRUD servers
+		::updateCRUDServer(app.BigBro, *app.Servers[iServer].Val);
 		::gpk::sleep(1);
 	}
 
