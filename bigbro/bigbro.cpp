@@ -21,12 +21,14 @@
 		jsonDB.Key														= jsonResult;
 
 		sprintf_s(temp, "[%u].type", iDatabase);
-		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
-		jsonDB.Val.HostType												= (jsonResult == "local") ? ::bro::DATABASE_HOST_REMOTE : ::bro::DATABASE_HOST_LOCAL;
+		jsonResult														= {};
+		int32_t																typeFound						= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+		::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
+		gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
+		jsonDB.Val.HostType												= (jsonResult == "local" || errored(typeFound)) ? ::bro::DATABASE_HOST_REMOTE : ::bro::DATABASE_HOST_LOCAL;
 
 		if(::bro::DATABASE_HOST_LOCAL == jsonDB.Val.HostType) {
 			// Load json database file.
-			::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
 			dbfilename.append(".json");
 			gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
 			// Load field bindings
