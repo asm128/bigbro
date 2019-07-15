@@ -20,20 +20,26 @@
 		::bro::TKeyValJSONDB												& jsonDB						= appState.Databases[iDatabase];
 		jsonDB.Key														= jsonResult;
 
-		// Load json database file.
-		::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
-		dbfilename.append(".json");
-		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
-		// Load field bindings
-		sprintf_s(temp, "[%u].bind", iDatabase);
-		::gpk::error_t														indexBindArray					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
-		cw_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin());
-		::gpk::error_t														sizeBindArray					= ::gpk::jsonArraySize(*configReader[indexBindArray]);
-		jsonDB.Val.Bindings.resize(sizeBindArray);
-		for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
-			sprintf_s(temp, "[%u]", iBind);
-			gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
-			jsonDB.Val.Bindings[iBind]										= jsonResult;
+		sprintf_s(temp, "[%u].type", iDatabase);
+		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
+		jsonDB.Val.HostType												= (jsonResult == "local") ? ::bro::DATABASE_HOST_REMOTE : ::bro::DATABASE_HOST_LOCAL;
+
+		if(::bro::DATABASE_HOST_LOCAL == jsonDB.Val.HostType) {
+			// Load json database file.
+			::gpk::array_pod<char_t>											dbfilename						= jsonDB.Key;
+			dbfilename.append(".json");
+			gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+			// Load field bindings
+			sprintf_s(temp, "[%u].bind", iDatabase);
+			::gpk::error_t														indexBindArray					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			cw_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin());
+			::gpk::error_t														sizeBindArray					= ::gpk::jsonArraySize(*configReader[indexBindArray]);
+			jsonDB.Val.Bindings.resize(sizeBindArray);
+			for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
+				sprintf_s(temp, "[%u]", iBind);
+				gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
+				jsonDB.Val.Bindings[iBind]										= jsonResult;
+			}
 		}
 	}
 	return 0;

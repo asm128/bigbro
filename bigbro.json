@@ -14,10 +14,10 @@
 		{	"listen_port"	: "15567"
 		,	"adapter"		: "1"
 		,	"databases"		: 
-			[	{ "name": "website"			, "bind" : ["website"			, ] }	
-			,	{ "name": "user"			, "bind" : ["manager"			, ] }		
-			,	{ "name": "publisher"		, "bind" : ["publisher"			, ] }	
-			,	{ "name": "company"			, "bind" : ["owner"				, ] }	
+			[	{ "type" : "local", "name": "website"	, "bind" : ["website"			, ] }
+			,	{ "type" : "local", "name": "user"		, "bind" : ["manager"			, ] }
+			,	{ "type" : "local", "name": "publisher"	, "bind" : ["publisher"			, ] }
+			,	{ "type" : "local", "name": "company"	, "bind" : ["owner"				, ] }
 			]
 		}
 	}
