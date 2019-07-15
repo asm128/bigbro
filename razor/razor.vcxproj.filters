@@ -15,15 +15,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="application.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="application_gui.cpp">
+    <ClCompile Include="razor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application.h">
+    <ClInclude Include="razor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="razor_endpoint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

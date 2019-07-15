@@ -1,4 +1,4 @@
-#include "bigeye.h"
+#include "bigman.h"
 
 #include "bro_packet.h"
 
@@ -12,12 +12,12 @@
 
 #include <string>		// for ::std::stoi()
 
-static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
+static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigMan & appState, ::gpk::array_pod<char> & output)					{
 	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;
 	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
 	::gpk::view_const_string								method;
 	::gpk::find("REQUEST_METHOD", environViews, method);
-	if(method != ::gpk::view_const_string{"GET"} && method != ::gpk::view_const_string{"POST"}) {
+	if(method != ::gpk::view_const_string{"PATCH"} && method != ::gpk::view_const_string{"POST"}) {
 		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" : \"Invalid request method\" }\r\n"});
 		return 1;
 	}
@@ -25,7 +25,7 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 	::gpk::array_pod<byte_t>								bytesToSend;
 	::bro::SRequestPacket									packetToSend;
 	{
-		packetToSend.Method									= 0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET") ? ::gpk::HTTP_METHOD_POST : ::gpk::HTTP_METHOD_GET;
+		packetToSend.Method									= 0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "PATCH") ? ::gpk::HTTP_METHOD_POST : ::gpk::HTTP_METHOD_PATCH;
 		::gpk::find("PATH_INFO"		, environViews, packetToSend.Path);
 		::gpk::find("QUERY_STRING"	, environViews, packetToSend.QueryString);
 		packetToSend.ContentBody							= runtimeValues.Content.Body;
@@ -62,8 +62,8 @@ static	int											cgiBootstrap			(const ::gpk::SCGIRuntimeValues & runtimeVal
 
 static int											cgiMain				(int argc, char** argv, char**envv)	{
 	(void)(envv);
-	::bro::SBigEye											appState;
-	::bro::bigEyeLoadConfig(appState, "bigeye.json");
+	::bro::SBigMan											appState;
+	::bro::bigEyeLoadConfig(appState, "bigman.json");
 
 	::gpk::SCGIRuntimeValues								runtimeValues;
 	gpk_necall(::gpk::cgiRuntimeValuesLoad(runtimeValues, {(const char**)argv, (uint32_t)argc}), "%s", "Failed to load cgi runtime values.");
