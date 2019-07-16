@@ -134,6 +134,14 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 			bytesResponse.append(partialResult);
 			partialResult.clear();
 		}
+		else {
+			char format[256];
+			bytesResponse.clear();
+			for(uint32_t iMiss = 0; iMiss < cacheMisses.size(); ++iMiss) {
+				sprintf_s(format, "Cache Miss: %%.%us[%lli]", cacheMisses[iMiss].Key.size(), cacheMisses[iMiss].Val);
+				info_printf(format, cacheMisses[iMiss].Key.begin());
+			}
+		}
 	}
 	return 0;
 }

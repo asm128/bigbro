@@ -29,7 +29,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 				for(uint32_t iDatabase = 0; iDatabase < databases.size(); ++iDatabase) {
 					const ::bro::TKeyValJSONDB							& childDatabase							= databases[iDatabase];
 					int64_t												indexRecordToExpandRelative				= (int64_t)indexRecordToExpand - childDatabase.Val.Range.Offset;
-					if(indexRecordToExpandRelative < 0) {
+					if(indexRecordToExpandRelative < 0 || 0 == childDatabase.Val.Table.Reader.Tree.size()) {
 						info_printf("Out of range - requires reload or probably there is another database with this info.");
 						continue;
 					}
