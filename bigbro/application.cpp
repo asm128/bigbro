@@ -2,17 +2,16 @@
 
 #include "bro_packet.h"
 
-#include "gpk_bitmap_file.h"
 #include "gpk_tcpip.h"
 #include "gpk_find.h"
 #include "gpk_process.h"
 
 #include "gpk_parse.h"
 #include "gpk_cgi.h"
+#include "gpk_stdstring.h"
 
 //#define GPK_AVOID_LOCAL_APPLICATION_MODULE_MODEL_EXECUTABLE_RUNTIME
 #include "gpk_app_impl.h"
-#include "gpk_stdstring.h"
 
 GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Big Bro v0.1");
 
