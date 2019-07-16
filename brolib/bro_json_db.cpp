@@ -3,14 +3,14 @@
 #include "gpk_stdstring.h"
 #include "gpk_find.h"
 
-static	::gpk::error_t							insertCacheMiss							(::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_const_string & field, int64_t indexRecord)			{
+static	::gpk::error_t							insertCacheMiss							(::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_const_string & field, const int64_t indexRecord)			{
 	bool												bInserted								= false;
 	for(uint32_t iAlias = 0; iAlias < cacheMisses.size(); ++iAlias) {
 		::bro::TCacheMissRecord								& curMissRecord							= cacheMisses[iAlias];
-		if(curMissRecord.Key != field)
+		if(field != curMissRecord.Key)
 			continue;
 		for(uint32_t iMiss = 0; iMiss < curMissRecord.Val.size(); ++iMiss) {
-			if(curMissRecord.Val[iMiss] == indexRecord) {
+			if(indexRecord == curMissRecord.Val[iMiss]) {
 				bInserted										= true;
 				break;
 			}
@@ -31,18 +31,18 @@ static	::gpk::error_t							insertCacheMiss							(::gpk::array_obj<::bro::TCach
 	return 0;
 }
 
-static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, uint32_t iRecord, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand)	{
-	const ::gpk::SJSONNode								& node									= *databaseReader.Tree[iRecord];
+static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, const ::gpk::SJSONNode	& databaseNode, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand)	{
+	//const ::gpk::SJSONNode								& node									= *databaseReader.Tree[iRecord];
 	int32_t												partialMiss								= 0;
-	if(0 == fieldsToExpand.size() || ::gpk::JSON_TYPE_OBJECT != node.Object->Type)
-		::gpk::jsonWrite(&node, databaseReader.View, output);
+	if(0 == fieldsToExpand.size() || ::gpk::JSON_TYPE_OBJECT != databaseNode.Object->Type)
+		::gpk::jsonWrite(&databaseNode, databaseReader.View, output);
 	else {
 		output.push_back('{');
-		for(uint32_t iChild = 0; iChild < node.Children.size(); iChild += 2) { 
-			uint32_t											indexKey								= node.Children[iChild + 0]->ObjectIndex;
-			uint32_t											indexVal								= node.Children[iChild + 1]->ObjectIndex;
+		for(uint32_t iChild = 0; iChild < databaseNode.Children.size(); iChild += 2) { 
+			uint32_t											indexKey								= databaseNode.Children[iChild + 0]->ObjectIndex;
+			uint32_t											indexVal								= databaseNode.Children[iChild + 1]->ObjectIndex;
 			const ::gpk::view_const_string						fieldToExpand							= fieldsToExpand[0];
-			const bool											bExpand									= databaseReader.View[indexKey] == fieldToExpand && ::gpk::JSON_TYPE_NULL != databaseReader.Tree[indexVal]->Object->Type;
+			const bool											bExpand									= databaseReader.View[indexKey] == fieldToExpand && ::gpk::JSON_TYPE_NULL != databaseReader.Object[indexVal].Type;
 			if(false == bExpand)  {
 				::gpk::jsonWrite(databaseReader.Tree[indexKey], databaseReader.View, output);
 				output.push_back(':');
@@ -58,25 +58,28 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 					const ::bro::TKeyValJSONDB							& childDatabase							= databases[iDatabase];
 					bool												bAliasMatch								= -1 != ::gpk::find(fieldToExpand, {childDatabase.Val.Bindings.begin(), childDatabase.Val.Bindings.size()});
 					int64_t												indexRecordToExpandRelative				= (int64_t)indexRecordToExpand - childDatabase.Val.Range.Offset;
-					if(indexRecordToExpandRelative < 0 || 0 == childDatabase.Val.Table.Reader.Tree.size()) {
+					const ::gpk::SJSONReader							& childReader							= childDatabase.Val.Table.Reader;
+					if(indexRecordToExpandRelative < 0 || 0 == childReader.Tree.size()) {
 						info_printf("Out of range - requires reload or probably there is another database with this info.");
 						continue;
 					}
 					if(childDatabase.Key == fieldToExpand || bAliasMatch) {
-						const ::gpk::SJSONNode								& childRoot								= *childDatabase.Val.Table.Reader.Tree[0];
+						const ::gpk::SJSONNode								& childRoot								= *childReader.Tree[0];
 						if(indexRecordToExpandRelative >= childRoot.Children.size()) {
 							info_printf("Out of range - requires reload or probably there is another database with this info.");
 							continue;
 						}
 						if(1 >= fieldsToExpand.size()) {
 							if(indexRecordToExpandRelative < childRoot.Children.size())
-								::gpk::jsonWrite(childRoot.Children[(uint32_t)indexRecordToExpandRelative], childDatabase.Val.Table.Reader.View, output);
+								::gpk::jsonWrite(childRoot.Children[(uint32_t)indexRecordToExpandRelative], childReader.View, output);
 							else
 								::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
 						}
 						else {
-							if(indexRecordToExpandRelative < childRoot.Children.size())
-								::generate_record_with_expansion(databases, childDatabase.Val.Table.Reader, childRoot.Children[(uint32_t)indexRecordToExpandRelative]->ObjectIndex, output, cacheMisses, {&fieldsToExpand[1], fieldsToExpand.size()-1});
+							if(indexRecordToExpandRelative < childRoot.Children.size()) {
+								const int32_t									iRecordNode								= childRoot.Children[(uint32_t)indexRecordToExpandRelative]->ObjectIndex;
+								::generate_record_with_expansion(databases, childReader, *childReader.Tree[iRecordNode], output, cacheMisses, {&fieldsToExpand[1], fieldsToExpand.size()-1});
+							}
 							else
 								::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
 						}
@@ -84,12 +87,12 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 					}
 				}
 				if(false == bSolved) {
-					insertCacheMiss(cacheMisses, fieldToExpand, (int64_t)indexRecordToExpand);
+					::insertCacheMiss(cacheMisses, fieldToExpand, (int64_t)indexRecordToExpand);
 					::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
 					++partialMiss;
 				}
 			}
-			if((node.Children.size() - 2) > iChild)
+			if((databaseNode.Children.size() - 2) > iChild)
 				output.push_back(',');
 		}
 		output.push_back('}');
@@ -112,7 +115,9 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 	const ::gpk::SJSONNode								& jsonRoot								= *databases[indexDB].Val.Table.Reader.Tree[0];
 	int32_t												partialMiss								= 0;
 	if(detail != -1) { // display detail
-		if(0 == query.Expand.size() || ((uint32_t)detail) >= jsonRoot.Children.size())
+		if(((uint32_t)detail) >= jsonRoot.Children.size())
+			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
+		else if(0 == query.Expand.size())
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
 		else {
 			if(0 == query.Expand.size()) 
@@ -120,7 +125,8 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 			else {
 				::gpk::array_obj<::gpk::view_const_string>			fieldsToExpand;
 				::gpk::split(query.Expand, '.', fieldsToExpand);
-				partialMiss										+= ::generate_record_with_expansion(databases, databases[indexDB].Val.Table.Reader, jsonRoot.Children[detail]->ObjectIndex, output, cacheMisses, fieldsToExpand);
+				const int32_t										iRecordNode								= jsonRoot.Children[detail]->ObjectIndex;
+				partialMiss										+= ::generate_record_with_expansion(databases, dbReader, *dbReader[iRecordNode], output, cacheMisses, fieldsToExpand);
 			}
 		}
 	}
@@ -141,7 +147,8 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 				::gpk::array_obj<::gpk::view_const_string>			fieldsToExpand;
 				::gpk::split(query.Expand, '.', fieldsToExpand);
 				for(uint32_t iRecord = (uint32_t)query.Range.Offset; iRecord < stopRecord; ++iRecord) {
-					partialMiss										+= ::generate_record_with_expansion(databases, databases[indexDB].Val.Table.Reader, jsonRoot.Children[iRecord]->ObjectIndex, output, cacheMisses, fieldsToExpand);
+					const int32_t										iRecordNode								= jsonRoot.Children[iRecord]->ObjectIndex;
+					partialMiss										+= ::generate_record_with_expansion(databases, dbReader, *dbReader[iRecordNode], output, cacheMisses, fieldsToExpand);
 					if((stopRecord - 1) > iRecord)
 						output.push_back(',');
 				}
