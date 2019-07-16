@@ -15,13 +15,17 @@
 
 GPK_DEFINE_APPLICATION_ENTRY_POINT(::bro::SApplication, "Big Bro v0.1");
 
+//#define BIGBRO_HEADLESS
+
 		::gpk::error_t										cleanup						(::bro::SApplication & app)						{
 	::gpk::serverStop(app.ServerAsync.UDPServer);
 	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {
 		::gpk::serverStop(app.Servers[iServer].Val->UDPServer);
 		::gpk::sleep(50);
 	}
+#ifndef BIGBRO_HEADLESS
 	::gpk::mainWindowDestroy(app.Framework.MainDisplay);
+#endif
 	::gpk::sleep(200);
 	::gpk::tcpipShutdown();
 	::gpk::sleep(200);
@@ -38,22 +42,22 @@ static	::gpk::error_t										loadServerConfig			(::bro::SApplication & app)			
 		const int32_t													indexObjectApp				= ::gpk::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonResult);
 		gwarn_if(errored(indexObjectApp), "Failed to find application node (%s) in json configuration file: '%s'", "application.bigbro", framework.FileNameJSONConfig.begin())
 		else {
-			jsonResult															= "";
+			jsonResult													= "";
 			gwarn_if(errored(::gpk::jsonExpressionResolve("listen_port", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
 				::gpk::parseIntegerDecimal(jsonResult, &port);
 				info_printf("Port to listen on: %u.", (uint32_t)port);
 			}
-			jsonResult															= "";
-			gwarn_if(errored(::gpk::jsonExpressionResolve("adapter"	, jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
+			jsonResult													= "";
+			gwarn_if(errored(::gpk::jsonExpressionResolve("adapter", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
 				::gpk::parseIntegerDecimal(jsonResult, &adapter);
 				info_printf("Adapter: %u.", (uint32_t)adapter);
 			}
 		}
 	}
-	app.BasePort														= (uint16_t)port;
-	app.Adapter															= (uint16_t)adapter;
+	app.BasePort												= (uint16_t)port;
+	app.Adapter													= (uint16_t)adapter;
 	return 0;
 }
 
@@ -66,7 +70,9 @@ static	::gpk::error_t										loadConfig					(::bro::SApplication & app)						{
 		::gpk::error_t										setupGUI					(::bro::SApplication & app);	// application_gui.cpp
 		::gpk::error_t										setup						(::bro::SApplication & app)						{
 	gpk_necall(::loadConfig(app), "%s", "Failed to load application configuration.");
+#ifndef BIGBRO_HEADLESS
 	gpk_necall(::setupGUI(app), "%s", "Failed to set up application graphical interface.");
+#endif
 	::gpk::tcpipInitialize();
 	// Put every server to listen.
 	uint16_t														port						= (uint16_t)app.BasePort;
@@ -93,7 +99,7 @@ static	::gpk::error_t										loadConfig					(::bro::SApplication & app)						{
 	return 0;
 }
 
-static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, const ::gpk::view_const_byte & payload, ::gpk::array_pod<byte_t> & bytesResponse)						{
+static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, const ::gpk::view_const_byte & payload, ::gpk::array_pod<char_t> & partialResult, ::gpk::array_pod<char_t> & bytesResponse)						{
 	::bro::SRequestPacket											packetReceived;
 	::bro::requestRead(packetReceived, payload);
 	{	// --- Retrieve query from request.
@@ -121,8 +127,14 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 				::gpk::stoull(strDetail, &detail);
 		}
 	}
-	if(0 != dbName.size())
-		::bro::generate_output_for_db(appState, dbName, (uint32_t)detail, bytesResponse);
+	if(0 != dbName.size()) {
+		::gpk::array_pod<int32_t>										cacheMisses;
+		::bro::generate_output_for_db(appState, dbName, (uint32_t)detail, partialResult, cacheMisses);
+		if(0 == cacheMisses.size()) {
+			bytesResponse.append(partialResult);
+			partialResult.clear();
+		}
+	}
 	return 0;
 }
 
@@ -140,17 +152,21 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::
 	}
 
 	::gpk::array_obj<::bro::TUDPResponseQueue>						& clientResponses			= serverAsync.ClientResponses;
-	clientResponses.resize(receivedPerClient.size());	// we need one output queue for each input queue
+	::gpk::array_obj<::bro::TUDPResponseQueue>						& partialResults			= serverAsync.PartialResults;
+	clientResponses	.resize(receivedPerClient.size());	// we need one output queue for each input queue
+	partialResults	.resize(receivedPerClient.size());	// we need one output queue for each input queue
 	for(uint32_t iClient = 0; iClient < receivedPerClient.size(); ++iClient) {	// Process received packets.
 		::bro::TUDPReceiveQueue											& clientReceived			= receivedPerClient[iClient];
-		clientResponses[iClient].resize(clientReceived.size());		// we need one output message for each received message
+		clientResponses	[iClient].resize(clientReceived.size());		// we need one output message for each received message
+		partialResults	[iClient].resize(clientReceived.size());		// we need one output message for each received message
 		for(uint32_t iMessage = 0; iMessage < clientReceived.size(); ++iMessage) {
 			info_printf("Client %i received: %s.", iClient, clientReceived[iMessage]->Payload.begin());	
 			::gpk::view_const_byte											payload						= clientReceived[iMessage]->Payload;
 			::gpk::array_pod<byte_t>										& bytesResponse				= clientResponses[iClient][iMessage];
+			::gpk::array_pod<byte_t>										& partialResult				= partialResults[iClient][iMessage];
 			bytesResponse												= ::gpk::view_const_string{"\r\n"};
-			::processPayload(appState, payload, bytesResponse);
-			if(2 == bytesResponse.size())
+			::processPayload(appState, payload, partialResult, bytesResponse);
+			if(2 == bytesResponse.size() && 0 == partialResult.size())
 				bytesResponse.append(::gpk::view_const_string{"{}"});
 		}
 	}
@@ -169,6 +185,7 @@ static	::gpk::error_t										updateCRUDServer			(::bro::SBigBro & appState, ::
 	return 0;
 }
 
+#ifndef BIGBRO_HEADLESS
 static	::gpk::error_t										updateDisplay				(::bro::SApplication & app)	{
 	{
 		::gpk::mutex_guard												lock						(app.LockRender);
@@ -190,32 +207,30 @@ static	::gpk::error_t										updateDisplay				(::bro::SApplication & app)	{
 	}
 	return 0;
 }
+#endif
 
 		::gpk::error_t										update						(::bro::SApplication & app, bool exitSignal)	{
 	::gpk::STimer													timer;
 	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, exitSignal, "Exit requested by runtime.");
+#ifndef BIGBRO_HEADLESS
 	retval_ginfo_if(::gpk::APPLICATION_STATE_EXIT, updateDisplay(app), "Exit requested by runtime.");
-
+#endif
 	gwarn_if(::updateCRUDServer(app.BigBro, app.ServerAsync), "Failed to update server!");
 	for(uint32_t iServer = 0; iServer < app.Servers.size(); ++iServer) {	// Update CRUD servers
 		gwarn_if(::updateCRUDServer(app.BigBro, *app.Servers[iServer].Val), "Failed to update server at index %i.", iServer);
 		::gpk::sleep(1);
 	}
-
 	char		buffer[256]		= {};
 	uint32_t	maxCount		= ::gpk::size(buffer);
 	::gpk_moduleTitle(buffer, &maxCount);
 	SetWindowTextA(app.Framework.MainDisplay.PlatformDetail.WindowHandle, buffer);
-
 	timer.Frame();
 	//warning_printf("Update time: %f.", (float)timer.LastTimeSeconds);
 	return 0;
 }
 
-//#define BIGBRO_DISABLE_DISPLAY
-
 		::gpk::error_t										draw					(::bro::SApplication & app)						{
-#if defined BIGBRO_DISABLE_DISPLAY
+#if defined BIGBRO_HEADLESS
 	(void)app;
 #else
 	::gpk::STimer														timer;

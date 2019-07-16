@@ -15,6 +15,7 @@ namespace bro // I'm gonna use a different namespace in order to test a few thin
 		::gpk::SUDPServer														UDPServer							= {};
 		::gpk::array_obj<::bro::TUDPReceiveQueue>								ReceivedPerClient					= {};
 		::gpk::array_obj<::bro::TUDPResponseQueue>								ClientResponses						= {};
+		::gpk::array_obj<::bro::TUDPResponseQueue>								PartialResults						= {};
 	};
 
 	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<::bro::SServerAsync>>	
