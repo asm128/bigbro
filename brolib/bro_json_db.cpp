@@ -56,7 +56,16 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 					}
 				}
 				if(false == bSolved) {
-					cacheMisses.push_back({fieldToExpand, (int64_t)indexRecordToExpand});
+					bool bInserted = false;
+					for(uint32_t iMiss = 0; iMiss < cacheMisses.size(); ++iMiss) {
+						if(cacheMisses[iMiss].Val > (int64_t)indexRecordToExpand) {
+							cacheMisses.insert(iMiss, {fieldToExpand, (int64_t)indexRecordToExpand});
+							bInserted	= true;
+							break;
+						}
+					}
+					if(false == bInserted)
+						cacheMisses.push_back({fieldToExpand, (int64_t)indexRecordToExpand});
 					::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
 					++partialMiss;
 				}

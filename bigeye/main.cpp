@@ -51,6 +51,7 @@ static	::gpk::error_t								cgiBootstrap					(const ::gpk::SCGIRuntimeValues & 
 					responseRemote										= received[0]->Payload;
 					break;
 				}
+				::gpk::sleep(10);
 			}
 		}
 		//info_printf("Remote CGI answer: %s.", responseRemote.begin());

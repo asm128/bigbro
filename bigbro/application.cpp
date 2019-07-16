@@ -85,9 +85,25 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 		else {
 			char format[256];
 			bytesResponse.clear();
+			::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>>	cacheMissesFolded;
 			for(uint32_t iMiss = 0; iMiss < cacheMisses.size(); ++iMiss) {
-				sprintf_s(format, "Cache Miss: %%.%us[%lli]", cacheMisses[iMiss].Key.size(), cacheMisses[iMiss].Val);
-				info_printf(format, cacheMisses[iMiss].Key.begin());
+				bool														bFolded			= false;
+				const ::gpk::SKeyVal<::gpk::view_const_string, int64_t>		& miss			= cacheMisses[iMiss];
+				for(uint32_t iFolded = 0; iFolded < cacheMissesFolded.size(); ++iFolded) { 
+					const ::gpk::SKeyVal<::gpk::view_const_string, int64_t>	& missFolded	= cacheMissesFolded[iFolded];
+					if(miss.Key == missFolded.Key && miss.Val == missFolded.Val) {
+						bFolded					= true;
+						break;
+					}
+				}
+				if(bFolded)
+					continue;
+				cacheMissesFolded.push_back(miss);
+			}
+			for(uint32_t iMiss = 0; iMiss < cacheMissesFolded.size(); ++iMiss) {
+				const ::gpk::SKeyVal<::gpk::view_const_string, int64_t>	& missFolded	= cacheMissesFolded[iMiss];
+				sprintf_s(format, "Cache Miss: %%.%us[%lli]", missFolded.Key.size(), missFolded.Val);
+				info_printf(format, missFolded.Key.begin());
 			}
 		}
 	}
@@ -98,14 +114,16 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 static	::gpk::error_t										pickUpQueueReceived			(::bba::SServerAsync & serverAsync)						{
 	::gpk::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
 	::gpk::array_obj<::gpk::array_pod<::bba::CONNECTION_STATE>>		& requestStates				= serverAsync.RequestStates;
-	receivedPerClient	.resize(serverAsync.UDPServer.Clients.size());
-	requestStates		.resize(serverAsync.UDPServer.Clients.size(), ::bba::CONNECTION_STATE_IDLE);
-	::gpk::mutex_guard												lock						(serverAsync.UDPServer.Mutex);
-	for(uint32_t iClient = 0; iClient < serverAsync.UDPServer.Clients.size(); ++iClient) {
-		::gpk::ptr_obj<::gpk::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
-		::gpk::mutex_guard												lockRecv					(conn->Queue.MutexReceive);
-		receivedPerClient[iClient]									= conn->Queue.Received;
-		conn->Queue.Received.clear();
+	{
+		::gpk::mutex_guard												lock						(serverAsync.UDPServer.Mutex);
+		receivedPerClient	.resize(serverAsync.UDPServer.Clients.size());
+		requestStates		.resize(serverAsync.UDPServer.Clients.size(), ::bba::CONNECTION_STATE_IDLE);
+		for(uint32_t iClient = 0; iClient < serverAsync.UDPServer.Clients.size(); ++iClient) {
+			::gpk::ptr_obj<::gpk::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
+			::gpk::mutex_guard												lockRecv					(conn->Queue.MutexReceive);
+			receivedPerClient[iClient]									= conn->Queue.Received;
+			conn->Queue.Received.clear();
+		}
 	}
 	return 0;
 }
