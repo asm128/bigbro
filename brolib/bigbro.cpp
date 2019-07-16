@@ -71,7 +71,13 @@ static	::gpk::error_t							generate_record_with_expansion			(::gpk::view_array<
 			uint32_t											indexKey								= node.Children[iChild + 0]->ObjectIndex;
 			uint32_t											indexVal								= node.Children[iChild + 1]->ObjectIndex;
 			const ::gpk::view_const_string						fieldToExpand							= fieldsToExpand[0];
-			if(databaseReader.View[indexKey] == fieldToExpand && ::gpk::JSON_TYPE_NULL != databaseReader.Tree[indexVal]->Object->Type) {
+			const bool											bExpand									= databaseReader.View[indexKey] == fieldToExpand && ::gpk::JSON_TYPE_NULL != databaseReader.Tree[indexVal]->Object->Type;
+			if(false == bExpand)  {
+				::gpk::jsonWrite(databaseReader.Tree[indexKey], databaseReader.View, output);
+				output.push_back(':');
+				::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
+			}
+			else {
 				::gpk::jsonWrite(databaseReader.Tree[indexKey], databaseReader.View, output);
 				output.push_back(':');
 				bool												bSolved									= false;
@@ -81,20 +87,14 @@ static	::gpk::error_t							generate_record_with_expansion			(::gpk::view_array<
 					const ::bro::TKeyValJSONDB							& childDatabase							= databases[iDatabase];
 					int64_t												indexRecordToExpandRelative				= (int64_t)indexRecordToExpand - childDatabase.Val.Range.Offset;
 					if(indexRecordToExpandRelative < 0) {
-						info_printf("Out of range - requires reload.");
-						++partialMiss;
-						cacheMisses.push_back(output.size());
-						::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
+						info_printf("Out of range - requires reload or probably there is another database with this info.");
 						continue;
 					}
 					bool												bAliasMatch								= -1 != ::gpk::find(fieldToExpand, {childDatabase.Val.Bindings.begin(), childDatabase.Val.Bindings.size()});
 					if(childDatabase.Key == fieldToExpand || bAliasMatch) {
 						const ::gpk::SJSONNode								& childRoot								= *childDatabase.Val.Table.Reader.Tree[0];
 						if(indexRecordToExpandRelative >= childRoot.Children.size()) {
-							info_printf("Out of range - requires reload.");
-							++partialMiss;
-							cacheMisses.push_back(output.size());
-							::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
+							info_printf("Out of range - requires reload or probably there is another database with this info.");
 							continue;
 						}
 						if(1 >= fieldsToExpand.size()) {
@@ -112,13 +112,11 @@ static	::gpk::error_t							generate_record_with_expansion			(::gpk::view_array<
 						bSolved											= true;
 					}
 				}
-				if(false == bSolved) 
+				if(false == bSolved) {
+					cacheMisses.push_back(output.size());
 					::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
-			}
-			else {
-				::gpk::jsonWrite(databaseReader.Tree[indexKey], databaseReader.View, output);
-				output.push_back(':');
-				::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
+					++partialMiss;
+				}
 			}
 			if((node.Children.size() - 2) > iChild)
 				output.push_back(',');
