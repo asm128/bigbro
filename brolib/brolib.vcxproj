@@ -181,6 +181,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bigbro.cpp" />
+    <ClCompile Include="bro_json_db.cpp" />
     <ClCompile Include="bro_packet.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

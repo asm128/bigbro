@@ -32,5 +32,8 @@
     <ClCompile Include="bigbro.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="bro_json_db.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

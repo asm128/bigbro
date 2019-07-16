@@ -25,6 +25,14 @@ namespace bro
 	};
 
 	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabase>	TKeyValJSONDB;
+	::gpk::error_t															generate_output_for_db				
+		( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
+		, const ::bro::SQuery									& query
+		, const ::gpk::view_const_string						& databaseName
+		, int32_t												detail
+		, ::gpk::array_pod<char_t>								& output
+		, ::gpk::array_pod<int32_t>								& cacheMisses
+		);
 }
 
 #endif // BRO_JSON_DB_H_029430293742
