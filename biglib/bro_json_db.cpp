@@ -31,7 +31,7 @@ static	::gpk::error_t							insertCacheMiss							(::gpk::array_obj<::bro::TCach
 	return 0;
 }
 
-static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, const ::gpk::SJSONNode	& databaseNode, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand, int32_t indexFieldToExpand)	{
+static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, const ::gpk::SJSONNode	& databaseNode, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand, uint32_t indexFieldToExpand)	{
 	//const ::gpk::SJSONNode								& node									= *databaseReader.Tree[iRecord];
 	int32_t												partialMiss								= 0;
 	if(0 == fieldsToExpand.size() || ::gpk::JSON_TYPE_OBJECT != databaseNode.Object->Type)
@@ -72,7 +72,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 							info_printf("Out of range - requires reload or probably there is another database with this info.");
 							continue;
 						}
-						if(((uint32_t)indexFieldToExpand + 1) >= fieldsToExpand.size()) {
+						if((indexFieldToExpand + 1) >= fieldsToExpand.size()) {
 							if(indexRecordToExpandRelative < childRoot.Children.size())
 								::gpk::jsonWrite(childRoot.Children[(uint32_t)indexRecordToExpandRelative], childReader.View, output);
 							else
@@ -90,7 +90,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 					}
 				}
 				if(false == bSolved) {
-					::insertCacheMiss(cacheMisses, fieldToExpand, (int64_t)indexRecordToExpand);
+					::insertCacheMiss(cacheMisses, {fieldsToExpand[0].begin(), (uint32_t)(fieldsToExpand[indexFieldToExpand].end() - fieldsToExpand[0].begin())}, (int64_t)indexRecordToExpand);
 					::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
 					++partialMiss;
 				}
