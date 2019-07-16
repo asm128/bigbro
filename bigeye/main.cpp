@@ -12,33 +12,16 @@
 
 #include <string>		// for ::std::stoi()
 
-static	int											cgiBootstrap					(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
+static	::gpk::error_t								cgiBootstrap					(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)								{
 	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;
 	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
-	::gpk::array_pod<char_t>								environmentBlock				= runtimeValues.EntryPointArgs.EnvironmentBlock; 
-																					
-	for(uint32_t iChar = 0; iChar < environmentBlock.size(); ++iChar)				
-		if(0 == environmentBlock[iChar])											
-			environmentBlock[iChar] = '¿';											
-																					
-	for(uint32_t iKey = 0; iKey < environViews.size(); ++iKey)						
-		if(environViews[iKey].Key == ::gpk::view_const_string{"REMOTE_ADDR"}) {		
-			::gpk::array_pod<char_t> temp;											
-			::gpk::fileToMemory(environViews[iKey].Val, temp);						
-			temp.append(environmentBlock);											
-			temp.push_back('\r');													
-			temp.push_back('\n');													
-			::gpk::fileFromMemory(environViews[iKey].Val, temp);					
-			break;																	
-		}																			
+	::gpk::writeCGIEnvironToFile(environViews);
 
-	::gpk::view_const_string								method;
-	::gpk::find("REQUEST_METHOD", environViews, method);
-	if(method != ::gpk::view_const_string{"GET"} && method != ::gpk::view_const_string{"POST"}) {
-		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" : \"Invalid request method\" }\r\n"});
+	::gpk::view_const_string								allowedMethods	[]				= {"POST", "GET"};
+	if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", allowedMethods)) {
+		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" :\"forbidden\" }\r\n"});
 		return 1;
-	}
-
+	}	
 	::gpk::array_pod<byte_t>								bytesToSend;
 	::bro::SRequestPacket									packetToSend;
 	{
@@ -72,21 +55,21 @@ static	int											cgiBootstrap					(const ::gpk::SCGIRuntimeValues & runtimeV
 		}
 		//info_printf("Remote CGI answer: %s.", responseRemote.begin());
 		gpk_necall(::gpk::clientDisconnect(udpClient), "%s", "error");
-		output									= responseRemote;
+		output												= responseRemote;
 	}
 	return 0;
 }
 
 static int											cgiMain				(int argc, char** argv, char**envv)	{
 	(void)(envv);
-	::bro::SBigEye											appState;
+	::bro::SBigEye											appState			= {};
 	::bro::bigEyeLoadConfig(appState, "bigeye.json");
 
-	::gpk::SCGIRuntimeValues								runtimeValues;
+	::gpk::SCGIRuntimeValues								runtimeValues		= {};
 	gpk_necall(::gpk::cgiRuntimeValuesLoad(runtimeValues, {(const char**)argv, (uint32_t)argc}), "%s", "Failed to load cgi runtime values.");
 	{
 		gpk_necall(::gpk::tcpipInitialize(), "%s", "Failed to initialize network subsystem.");
-		::gpk::array_pod<char>									html;
+		::gpk::array_pod<char>									html				= {};
 		if errored(::cgiBootstrap(runtimeValues, appState, html)) {
 			printf("%s\r\n", "Content-Type: text/html"
 				"\r\nCache-Control: no-store"
