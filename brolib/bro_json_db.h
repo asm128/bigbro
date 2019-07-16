@@ -24,14 +24,15 @@ namespace bro
 		::gpk::view_const_string												Expand						= "";
 	};
 
+	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::array_pod<int64_t>>	TCacheMissRecord;
 	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabase>	TKeyValJSONDB;
 	::gpk::error_t															generate_output_for_db				
-		( const ::gpk::view_array<const ::bro::TKeyValJSONDB>					& databases
-		, const ::bro::SQuery													& query
-		, const ::gpk::view_const_string										& databaseName
-		, int32_t																detail
-		, ::gpk::array_pod<char_t>												& output
-		, ::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>>	& cacheMisses
+		( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
+		, const ::bro::SQuery									& query
+		, const ::gpk::view_const_string						& databaseName
+		, int32_t												detail
+		, ::gpk::array_pod<char_t>								& output
+		, ::gpk::array_obj<TCacheMissRecord>					& cacheMisses
 		);
 }
 

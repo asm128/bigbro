@@ -76,7 +76,7 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 		}
 	}
 	if(0 != dbName.size()) {
-		::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>>	cacheMisses;
+		::gpk::array_obj<::bro::TCacheMissRecord>						cacheMisses;
 		::bro::generate_output_for_db(appState.Databases, appState.Query, dbName, (uint32_t)detail, partialResult, cacheMisses);
 		if(0 == cacheMisses.size()) {
 			bytesResponse.append(partialResult);
@@ -85,25 +85,32 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 		else {
 			char format[256];
 			bytesResponse.clear();
-			::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>>	cacheMissesFolded;
-			for(uint32_t iMiss = 0; iMiss < cacheMisses.size(); ++iMiss) {
-				bool														bFolded			= false;
-				const ::gpk::SKeyVal<::gpk::view_const_string, int64_t>		& miss			= cacheMisses[iMiss];
-				for(uint32_t iFolded = 0; iFolded < cacheMissesFolded.size(); ++iFolded) { 
-					const ::gpk::SKeyVal<::gpk::view_const_string, int64_t>	& missFolded	= cacheMissesFolded[iFolded];
-					if(miss.Key == missFolded.Key && miss.Val == missFolded.Val) {
-						bFolded					= true;
-						break;
+			::gpk::array_obj<::bro::TCacheMissRecord>		cacheMissesFolded;
+			for(uint32_t iAliasMiss = 0; iAliasMiss < cacheMisses.size(); ++iAliasMiss) {
+				const ::bro::TCacheMissRecord								& miss			= cacheMisses[iAliasMiss];
+				cacheMissesFolded.push_back({miss.Key, {}});
+				for(uint32_t iMiss = 0; iMiss < miss.Val.size(); ++iMiss) {
+					bool														bFolded			= false;
+					for(uint32_t iFolded = 0; iFolded < cacheMissesFolded.size(); ++iFolded) { 
+						const ::bro::TCacheMissRecord								& missFolded	= cacheMissesFolded[iFolded];
+						for(uint32_t iFoldedMiss = 0; iFoldedMiss < cacheMissesFolded[iFolded].Val.size(); ++iFoldedMiss) { 
+							if(miss.Val[iMiss] == missFolded.Val[iFoldedMiss]) {
+								bFolded					= true;
+								break;
+							}
+						}
 					}
+					if(bFolded)
+						continue;
+					cacheMissesFolded.push_back(miss);
 				}
-				if(bFolded)
-					continue;
-				cacheMissesFolded.push_back(miss);
 			}
-			for(uint32_t iMiss = 0; iMiss < cacheMissesFolded.size(); ++iMiss) {
-				const ::gpk::SKeyVal<::gpk::view_const_string, int64_t>	& missFolded	= cacheMissesFolded[iMiss];
-				sprintf_s(format, "Cache Miss: %%.%us[%lli]", missFolded.Key.size(), missFolded.Val);
-				info_printf(format, missFolded.Key.begin());
+			for(uint32_t iAliasMiss = 0; iAliasMiss < cacheMissesFolded.size(); ++iAliasMiss) {
+				const ::bro::TCacheMissRecord					& missFolded			= cacheMissesFolded[iAliasMiss];
+				for(uint32_t iMiss = 0; iMiss < missFolded.Val.size(); ++iMiss) {
+					sprintf_s(format, "Cache Miss: %%.%us[%lli]", missFolded.Key.size(), missFolded.Val[iMiss]);
+					info_printf(format, missFolded.Key.begin());
+				}
 			}
 		}
 	}
