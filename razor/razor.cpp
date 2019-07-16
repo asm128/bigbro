@@ -6,21 +6,6 @@
 
 #include "gpk_json_expression.h"
 
-::gpk::error_t									razor::loadCWD							(const ::gpk::view_array<::gpk::TKeyValConstString> & environViews, ::gpk::array_pod<char_t> & cwd)	{
-	for(uint32_t iKey = 0; iKey < environViews.size(); ++iKey) {
-		if(environViews[iKey].Key == ::gpk::view_const_string{"SCRIPT_FILENAME"}) {
-			cwd = environViews[iKey].Val;
-			int32_t lastBarIndex = ::gpk::findLastSlash({cwd.begin(), cwd.size()});
-			if(-1 != lastBarIndex) {
-				cwd[lastBarIndex]		= 0;
-				cwd.resize(lastBarIndex);
-				break;
-			}
-		}
-	}
-	return 0;
-}
-
 ::gpk::error_t									razor::loadDetail						(const ::gpk::view_array<::gpk::TKeyValConstString> & environViews, int32_t & detail)	{
 	for(uint32_t iKey = 0; iKey < environViews.size(); ++iKey) {
 		if(environViews[iKey].Key == ::gpk::view_const_string{"PATH_INFO"}) {
@@ -29,5 +14,17 @@
 			detail = (int32_t)_detail;
 		}
 	}
+	return 0;
+}
+
+::gpk::error_t									razor::processQuery						
+	( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
+	, const ::bro::SQuery									& query
+	, const ::gpk::view_const_string						& databaseName
+	, int32_t												detail
+	, ::gpk::array_pod<char_t>								& output
+	) {
+	::gpk::array_obj<::bro::TCacheMissRecord>			cacheMisses;																										
+	gpk_necall(::bro::generate_output_for_db(databases, query, databaseName, detail, output, cacheMisses), "%s", "Failed to load razor databases.");	
 	return 0;
 }
