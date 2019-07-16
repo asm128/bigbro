@@ -25,7 +25,8 @@ GPK_CGI_JSON_APP_IMPL();																																							\
 	gpk_necall(::bro::loadQuery(app.BigBro.Query, runtimeValues.QueryStringKeyVals), "%s", "Failed to load query.");																\
 	int32_t												detail							= -1;																						\
 	gpk_necall(::razor::loadDetail(environViews,detail), "%s", "Failed to load detail.");																							\
-	gpk_necall(::bro::generate_output_for_db(app.BigBro, _endpointName, detail, output), "%s", "Failed to load razor databases.");													\
+	::gpk::array_pod<int32_t>							cacheMisses;																												\
+	gpk_necall(::bro::generate_output_for_db(app.BigBro, _endpointName, detail, output, cacheMisses), "%s", "Failed to load razor databases.");										\
 	return 0;																																										\
 }
 
