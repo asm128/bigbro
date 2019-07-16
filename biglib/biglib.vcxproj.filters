@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bro_packet.h">
+    <ClInclude Include="bro_json_db.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="bro_json_db.h">
+    <ClInclude Include="bro_packet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="bigbro.h">
@@ -26,13 +26,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="bro_packet.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="bigbro.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="bro_json_db.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="bro_packet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -16,7 +16,6 @@ namespace razor
 	struct SRazorApp {
 		::bro::SBigBro								BigBro						= {};
 		::razor::SProcess							Process						= {};
-		::gpk::array_pod<char_t>					CWD							= {};
 		::gpk::SJSONFile							Config						= {};
 	};
 

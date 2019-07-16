@@ -24,7 +24,6 @@ GPK_CGI_JSON_APP_IMPL();																																							\
 	}																																												\
 	::gpk::jsonFileRead(app.Config, "bigbro.json");																																	\
 	gpk_necall(::bro::loadConfig(app.BigBro, app.Config.Reader), "%s", "Failed to load query.");																					\
-	gpk_necall(::razor::loadCWD(environViews, app.CWD), "%s", "Failed to load query.");																								\
 	gpk_necall(::bro::loadQuery(app.BigBro.Query, runtimeValues.QueryStringKeyVals), "%s", "Failed to load query.");																\
 	int32_t												detail							= -1;																						\
 	gpk_necall(::razor::loadDetail(environViews,detail), "%s", "Failed to load detail.");																							\
