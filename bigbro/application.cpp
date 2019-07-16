@@ -104,8 +104,8 @@ static	::gpk::error_t										pickUpQueueReceived			(::bba::SServerAsync & serv
 	for(uint32_t iClient = 0; iClient < serverAsync.UDPServer.Clients.size(); ++iClient) {
 		::gpk::ptr_obj<::gpk::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
 		::gpk::mutex_guard												lockRecv					(conn->Queue.MutexReceive);
-		receivedPerClient[iClient]									= serverAsync.UDPServer.Clients[iClient]->Queue.Received;
-		serverAsync.UDPServer.Clients[iClient]->Queue.Received.clear();
+		receivedPerClient[iClient]									= conn->Queue.Received;
+		conn->Queue.Received.clear();
 	}
 	return 0;
 }
