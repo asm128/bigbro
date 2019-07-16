@@ -3,7 +3,7 @@
 #include "gpk_stdstring.h"
 #include "gpk_find.h"
 
-static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, uint32_t iRecord, ::gpk::array_pod<char_t> & output, ::gpk::array_pod<int32_t> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand)	{
+static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, uint32_t iRecord, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand)	{
 	const ::gpk::SJSONNode								& node									= *databaseReader.Tree[iRecord];
 	int32_t												partialMiss								= 0;
 	if(0 == fieldsToExpand.size() || ::gpk::JSON_TYPE_OBJECT != node.Object->Type)
@@ -56,7 +56,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 					}
 				}
 				if(false == bSolved) {
-					cacheMisses.push_back(output.size());
+					cacheMisses.push_back({fieldToExpand, (int64_t)indexRecordToExpand});
 					::gpk::jsonWrite(databaseReader.Tree[indexVal], databaseReader.View, output);
 					++partialMiss;
 				}
@@ -70,12 +70,12 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 }
 
 ::gpk::error_t									bro::generate_output_for_db				
-	( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
-	, const ::bro::SQuery									& query
-	, const ::gpk::view_const_string						& databaseName
-	, int32_t												detail
-	, ::gpk::array_pod<char_t>								& output
-	, ::gpk::array_pod<int32_t>								& cacheMisses
+	( const ::gpk::view_array<const ::bro::TKeyValJSONDB>						& databases
+	, const ::bro::SQuery														& query
+	, const ::gpk::view_const_string											& databaseName
+	, int32_t																	detail
+	, ::gpk::array_pod<char_t>													& output
+	, ::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>>		& cacheMisses
 	)
 {
 	int32_t												indexDB									= ::gpk::find(databaseName, ::gpk::view_array<const ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabase>>{databases.begin(), databases.size()});

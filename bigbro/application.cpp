@@ -128,7 +128,7 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 		}
 	}
 	if(0 != dbName.size()) {
-		::gpk::array_pod<int32_t>										cacheMisses;
+		::gpk::array_obj<::gpk::SKeyVal<::gpk::view_const_string, int64_t>>	cacheMisses;
 		::bro::generate_output_for_db(appState.Databases, appState.Query, dbName, (uint32_t)detail, partialResult, cacheMisses);
 		if(0 == cacheMisses.size()) {
 			bytesResponse.append(partialResult);
