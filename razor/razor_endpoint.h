@@ -1,9 +1,7 @@
 #include "razor.h"
 
 #include "gpk_cgi_app_impl_v2.h"
-
 #include "gpk_process.h"
-#include "gpk_storage.h"
 
 #ifndef RAZOR_ENDPOINT_H_20190713
 #define RAZOR_ENDPOINT_H_20190713
@@ -18,16 +16,20 @@ GPK_CGI_JSON_APP_IMPL();																																			\
 	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);																		\
 	::gpk::writeCGIEnvironToFile(environViews);																														\
 																																									\
-	if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET")) {																							\
-		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" :\"forbidden\" }\r\n"});														\
-		return 1;																																					\
-	}																																								\
-	::gpk::jsonFileRead(app.Config, "razor.json");																													\
+	/*if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET")) {																							*/\
+	/*	output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" :\"forbidden\" }\r\n"});														*/\
+	/*	return 1;																																					*/\
+	/*}																																								*/\
+	gpk_necall(::gpk::jsonFileRead(app.Config, "razor.json"), "Failed to load configuration file: %s.", "razor.json");												\
 	gpk_necall(::bro::loadConfig(app.BigBro, app.Config.Reader), "%s", "Failed to load query.");																	\
 	gpk_necall(::bro::loadQuery(app.BigBro.Query, runtimeValues.QueryStringKeyVals), "%s", "Failed to load query.");												\
 	int32_t												detail							= -1;																		\
 	gpk_necall(::razor::loadDetail(environViews,detail), "%s", "Failed to load detail.");																			\
 	gpk_necall(::razor::processQuery(app.BigBro.Databases, app.BigBro.Query, _endpointName, detail, output), "%s", "Failed to load razor databases.");				\
+	if(output.size()) {																																				\
+		OutputDebugStringA(output.begin());																															\
+		OutputDebugStringA("\n");																																	\
+	}																																								\
 	return 0;																																						\
 }
 

@@ -24,7 +24,9 @@
 	, int32_t												detail
 	, ::gpk::array_pod<char_t>								& output
 	) {
-	::gpk::array_obj<::bro::TCacheMissRecord>			cacheMisses;																										
-	gpk_necall(::bro::generate_output_for_db(databases, query, databaseName, detail, output, cacheMisses), "%s", "Failed to load razor databases.");	
+	::gpk::array_obj<::bro::TCacheMissRecord>			cacheMisses;			
+	do {
+		gpk_necall(::bro::generate_output_for_db(databases, query, databaseName, detail, output, cacheMisses), "%s", "Failed to load razor databases.");	
+	} while(cacheMisses.size());
 	return 0;
 }

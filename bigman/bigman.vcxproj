@@ -104,7 +104,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>brolib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
+      <AdditionalDependencies>biglib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir); </AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
@@ -123,7 +123,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>brolib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
+      <AdditionalDependencies>biglib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir); </AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
@@ -146,7 +146,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>brolib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
+      <AdditionalDependencies>biglib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir); </AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
@@ -169,7 +169,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>brolib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
+      <AdditionalDependencies>biglib.lib; llc.lib; gpk.lib; zlibvc.lib; ws2_32.lib; </AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir); </AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
