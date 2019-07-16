@@ -1,8 +1,5 @@
 #include "bigbro.h"
 
-#include <Windows.h>
-#include <process.h>
-
 #ifndef RAZOR_H_20190712
 #define RAZOR_H_20190712
 
@@ -22,6 +19,5 @@ namespace razor
 		, ::gpk::array_pod<char_t>								& output
 		);
 }
-
 
 #endif // RAZOR_H_20190712
