@@ -18,7 +18,7 @@
     <ClCompile Include="application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="application_gui.cpp">
+    <ClCompile Include="application_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

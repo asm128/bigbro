@@ -7,7 +7,7 @@
 		"bigbro": 
 		{	"listen_port"	: "15567"
 		,	"adapter"		: "1"
-		,	"remote_domain"	: "http://http://201.235.131.233"
+		,	"remote_domain"	: "http://201.235.131.233"
 		,	"databases"		: 
 			[	{ "type" : "local", "name": "website"		, "bind" : ["website"	, ] }
 			,	{ "type" : "local", "name": "user"			, "bind" : ["referral"	, ] }

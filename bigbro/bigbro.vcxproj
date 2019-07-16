@@ -176,7 +176,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="application.cpp" />
-    <ClCompile Include="application_gui.cpp" />
+    <ClCompile Include="application_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h" />

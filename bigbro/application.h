@@ -6,29 +6,33 @@
 #ifndef APPLICATION_H_2078934982734
 #define APPLICATION_H_2078934982734
 
-namespace bro // I'm gonna use a different namespace in order to test a few things about the macros.
+namespace bba // bigbroapp
 {
 	typedef ::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>	TUDPReceiveQueue;
 	typedef ::gpk::array_obj<::gpk::array_pod<char_t>>						TUDPResponseQueue;
 
+	GDEFINE_ENUM_TYPE	(CONNECTION_STATE, uint8_t);
+	GDEFINE_ENUM_VALUE	(CONNECTION_STATE, IDLE			, 0);
+	GDEFINE_ENUM_VALUE	(CONNECTION_STATE, PROCESSING	, 1);
 	struct SServerAsync {
 		::gpk::SUDPServer														UDPServer							= {};
-		::gpk::array_obj<::bro::TUDPReceiveQueue>								ReceivedPerClient					= {};
-		::gpk::array_obj<::bro::TUDPResponseQueue>								ClientResponses						= {};
-		::gpk::array_obj<::bro::TUDPResponseQueue>								PartialResults						= {};
+		::gpk::array_obj<::bba::TUDPReceiveQueue>								ReceivedPerClient					= {};
+		::gpk::array_obj<::bba::TUDPResponseQueue>								ClientResponses						= {};
+		::gpk::array_obj<::bba::TUDPResponseQueue>								PartialResults						= {};
+		::gpk::array_obj<::gpk::array_pod<CONNECTION_STATE>>					RequestStates						= {};
 	};
 
-	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<::bro::SServerAsync>>	
+	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<::bba::SServerAsync>>	
 																			TKeyValServerAsync;
 	typedef ::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>				TRenderTarget;
 
 	struct SApplication {
 		::gpk::SFramework														Framework;
-		::gpk::ptr_obj<::bro::TRenderTarget>									Offscreen							= {};
+		::gpk::ptr_obj<::bba::TRenderTarget>									Offscreen							= {};
 
 		::bro::SBigBro															BigBro								= {};
-		::bro::SServerAsync														ServerAsync							= {};
-		::gpk::array_obj<::bro::TKeyValServerAsync>								Servers								= {};
+		::bba::SServerAsync														ServerAsync							= {};
+		::gpk::array_obj<::bba::TKeyValServerAsync>								Servers								= {};
 
 		uint16_t																BasePort							= 0;
 		int16_t																	Adapter								= 0;
@@ -38,8 +42,12 @@ namespace bro // I'm gonna use a different namespace in order to test a few thin
 		::std::mutex															LockGUI;
 		::std::mutex															LockRender;
 
-																				SApplication		(::gpk::SRuntimeValues& runtimeValues)	: Framework(runtimeValues, "bigbro.json")	{}
+																				SApplication						(::gpk::SRuntimeValues& runtimeValues)	: Framework(runtimeValues, "bigbro.json")	{}
 	};
+
+	::gpk::error_t															loadConfig							(::bba::SApplication & app);
+	::gpk::error_t															updateCRUDServer					(::bro::SBigBro & appState, ::bba::SServerAsync & serverAsync);
 } // namespace
+
 
 #endif // APPLICATION_H_2078934982734
