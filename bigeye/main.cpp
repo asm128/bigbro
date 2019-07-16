@@ -15,6 +15,23 @@
 static	int											cgiBootstrap					(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)					{
 	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;
 	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
+	::gpk::array_pod<char_t>								environmentBlock				= runtimeValues.EntryPointArgs.EnvironmentBlock; 
+																					
+	for(uint32_t iChar = 0; iChar < environmentBlock.size(); ++iChar)				
+		if(0 == environmentBlock[iChar])											
+			environmentBlock[iChar] = '¿';											
+																					
+	for(uint32_t iKey = 0; iKey < environViews.size(); ++iKey)						
+		if(environViews[iKey].Key == ::gpk::view_const_string{"REMOTE_ADDR"}) {		
+			::gpk::array_pod<char_t> temp;											
+			::gpk::fileToMemory(environViews[iKey].Val, temp);						
+			temp.append(environmentBlock);											
+			temp.push_back('\r');													
+			temp.push_back('\n');													
+			::gpk::fileFromMemory(environViews[iKey].Val, temp);					
+			break;																	
+		}																			
+
 	::gpk::view_const_string								method;
 	::gpk::find("REQUEST_METHOD", environViews, method);
 	if(method != ::gpk::view_const_string{"GET"} && method != ::gpk::view_const_string{"POST"}) {
