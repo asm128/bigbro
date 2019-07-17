@@ -124,7 +124,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 	int64_t												relativeDetail							= query.Detail - dbObject.Val.Range.Offset;
 	if(query.Detail >= 0) { // display detail
 		if(0 == query.Expand.size())
-			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
+			::gpk::jsonWrite(jsonRoot.Children[(uint32_t)relativeDetail], dbReader.View, output);
 		else if(relativeDetail < 0 || relativeDetail >= jsonRoot.Children.size()) {
 			::insertCacheMiss(cacheMisses, databaseName, (int64_t)query.Detail);
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
