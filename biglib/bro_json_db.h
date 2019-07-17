@@ -21,6 +21,7 @@ namespace bro
 
 	struct SQuery {
 		::gpk::SRange<uint64_t>													Range						= {0, MAX_TABLE_RECORD_COUNT};
+		int64_t																	Detail						= -1;
 		::gpk::view_const_string												Expand						= "";
 	};
 
@@ -30,7 +31,6 @@ namespace bro
 		( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
 		, const ::bro::SQuery									& query
 		, const ::gpk::view_const_string						& databaseName
-		, int32_t												detail
 		, ::gpk::array_pod<char_t>								& output
 		, ::gpk::array_obj<TCacheMissRecord>					& cacheMisses
 		);

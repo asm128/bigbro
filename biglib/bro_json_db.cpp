@@ -107,7 +107,6 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 	( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
 	, const ::bro::SQuery									& query
 	, const ::gpk::view_const_string						& databaseName
-	, int32_t												detail
 	, ::gpk::array_pod<char_t>								& output
 	, ::gpk::array_obj<TCacheMissRecord>					& cacheMisses
 	)
@@ -117,18 +116,19 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 	const ::gpk::SJSONReader							& dbReader								= databases[indexDB].Val.Table.Reader;
 	const ::gpk::SJSONNode								& jsonRoot								= *databases[indexDB].Val.Table.Reader.Tree[0];
 	int32_t												partialMiss								= 0;
-	if(detail != -1) { // display detail
-		if(((uint32_t)detail) >= jsonRoot.Children.size())
+	uint32_t											relativeDetail							= (uint32_t)(query.Detail - databases[indexDB].Val.Range.Offset);
+	if(query.Detail != -1) { // display detail
+		if(relativeDetail >= jsonRoot.Children.size())
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
 		else if(0 == query.Expand.size())
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
 		else {
 			if(0 == query.Expand.size()) 
-				::gpk::jsonWrite(jsonRoot.Children[detail], dbReader.View, output);
+				::gpk::jsonWrite(jsonRoot.Children[relativeDetail], dbReader.View, output);
 			else {
 				::gpk::array_obj<::gpk::view_const_string>			fieldsToExpand;
 				::gpk::split(query.Expand, '.', fieldsToExpand);
-				const int32_t										iRecordNode								= jsonRoot.Children[detail]->ObjectIndex;
+				const int32_t										iRecordNode								= jsonRoot.Children[relativeDetail]->ObjectIndex;
 				partialMiss										+= ::generate_record_with_expansion(databases, dbReader, *dbReader[iRecordNode], output, cacheMisses, fieldsToExpand, 0);
 			}
 		}

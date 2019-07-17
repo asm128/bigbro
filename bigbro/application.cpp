@@ -71,13 +71,15 @@ static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, con
 		if(indexOfLastBar > 0 && startOfDetail < dbName.size()) {
 			strDetail													= {&dbName[startOfDetail], dbName.size() - startOfDetail};
 			dbName														= {dbName.begin(), (uint32_t)indexOfLastBar};
-			if(strDetail.size())
+			if(strDetail.size()) {
 				::gpk::stoull(strDetail, &detail);
+				appState.Query.Detail										= (int64_t)detail;
+			}
 		}
 	}
 	if(0 != dbName.size()) {
 		::gpk::array_obj<::bro::TCacheMissRecord>						cacheMisses;
-		::bro::generate_output_for_db(appState.Databases, appState.Query, dbName, (uint32_t)detail, partialResult, cacheMisses);
+		::bro::generate_output_for_db(appState.Databases, appState.Query, dbName, partialResult, cacheMisses);
 		if(0 == cacheMisses.size()) {
 			bytesResponse.append(partialResult);
 			partialResult.clear();
