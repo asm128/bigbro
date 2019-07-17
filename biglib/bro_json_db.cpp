@@ -111,36 +111,45 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 	, ::gpk::array_obj<TCacheMissRecord>					& cacheMisses
 	)
 {
-	int32_t												indexDB									= ::gpk::find(databaseName, ::gpk::view_array<const ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabase>>{databases.begin(), databases.size()});
+	int32_t												indexDB									= ::gpk::find(databaseName, ::gpk::view_array<const ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabaseV0>>{databases.begin(), databases.size()});
 	rew_if(-1 == indexDB, "Database not found : %s", databaseName.begin());
-	const ::gpk::SJSONReader							& dbReader								= databases[indexDB].Val.Table.Reader;
-	const ::gpk::SJSONNode								& jsonRoot								= *databases[indexDB].Val.Table.Reader.Tree[0];
+	::bro::TKeyValJSONDB								dbObject								= databases[indexDB];
+	const ::gpk::SJSONReader							& dbReader								= dbObject.Val.Table.Reader;
+	if(0 == dbReader.Tree.size()) {
+		::insertCacheMiss(cacheMisses, databaseName, (int64_t)query.Detail);
+		return 1;
+	}
+	const ::gpk::SJSONNode								& jsonRoot								= *dbReader.Tree[0];
 	int32_t												partialMiss								= 0;
-	uint32_t											relativeDetail							= (uint32_t)(query.Detail - databases[indexDB].Val.Range.Offset);
-	if(query.Detail != -1) { // display detail
-		if(relativeDetail >= jsonRoot.Children.size())
+	int64_t												relativeDetail							= query.Detail - dbObject.Val.Range.Offset;
+	if(query.Detail >= 0) { // display detail
+		if(0 == query.Expand.size())
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
-		else if(0 == query.Expand.size())
+		else if(relativeDetail < 0 || relativeDetail >= jsonRoot.Children.size()) {
+			::insertCacheMiss(cacheMisses, databaseName, (int64_t)query.Detail);
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
+			return partialMiss								= 1;
+		}
 		else {
 			if(0 == query.Expand.size()) 
-				::gpk::jsonWrite(jsonRoot.Children[relativeDetail], dbReader.View, output);
+				::gpk::jsonWrite(jsonRoot.Children[(uint32_t)relativeDetail], dbReader.View, output);
 			else {
 				::gpk::array_obj<::gpk::view_const_string>			fieldsToExpand;
 				::gpk::split(query.Expand, '.', fieldsToExpand);
-				const int32_t										iRecordNode								= jsonRoot.Children[relativeDetail]->ObjectIndex;
+				const int32_t										iRecordNode								= jsonRoot.Children[(uint32_t)relativeDetail]->ObjectIndex;
 				partialMiss										+= ::generate_record_with_expansion(databases, dbReader, *dbReader[iRecordNode], output, cacheMisses, fieldsToExpand, 0);
 			}
 		}
 	}
 	else {  // display multiple records
-		if(0 == query.Expand.size() && 0 >= query.Range.Offset && query.Range.Count >= jsonRoot.Children.size())
+		if(0 == query.Expand.size() && 0 >= query.Range.Offset && query.Range.Count >= jsonRoot.Children.size())	// a larger range than available was requested and no expansion is required. Just send the whole thing
 			::gpk::jsonWrite(&jsonRoot, dbReader.View, output);
 		else {
 			output.push_back('[');
-			const uint32_t										stopRecord								= (uint32_t)::gpk::min(query.Range.Offset + query.Range.Count, (uint64_t)jsonRoot.Children.size());
+			uint32_t											relativeQueryOffset						= (uint32_t)(query.Range.Offset - dbObject.Val.Range.Offset);
+			const uint32_t										stopRecord								= (uint32_t)::gpk::min(relativeQueryOffset + query.Range.Count, (uint64_t)jsonRoot.Children.size());
 			if(0 == query.Expand.size()) {
-				for(uint32_t iRecord = (uint32_t)query.Range.Offset; iRecord < stopRecord; ++iRecord) {
+				for(uint32_t iRecord = relativeQueryOffset; iRecord < stopRecord; ++iRecord) {
 					::gpk::jsonWrite(jsonRoot.Children[iRecord], dbReader.View, output);
 					if((stopRecord - 1) > iRecord)
 						output.push_back(',');
