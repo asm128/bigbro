@@ -31,7 +31,7 @@ static	::gpk::error_t							insertCacheMiss							(::gpk::array_obj<::bro::TCach
 	return 0;
 }
 
-static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDB> & databases, const ::gpk::SJSONReader & databaseReader, const ::gpk::SJSONNode	& databaseNode, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand, uint32_t indexFieldToExpand)	{
+static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_array<const ::bro::TKeyValJSONDBV0> & databases, const ::gpk::SJSONReader & databaseReader, const ::gpk::SJSONNode	& databaseNode, ::gpk::array_pod<char_t> & output, ::gpk::array_obj<::bro::TCacheMissRecord> & cacheMisses, const ::gpk::view_array<const ::gpk::view_const_string> & fieldsToExpand, uint32_t indexFieldToExpand)	{
 	//const ::gpk::SJSONNode								& node									= *databaseReader.Tree[iRecord];
 	int32_t												partialMiss								= 0;
 	if(0 == fieldsToExpand.size() || ::gpk::JSON_TYPE_OBJECT != databaseNode.Object->Type)
@@ -55,7 +55,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 				uint64_t											indexRecordToExpand						= 0;
 				::gpk::stoull(databaseReader.View[indexVal], &indexRecordToExpand);
 				for(uint32_t iDatabase = 0; iDatabase < databases.size(); ++iDatabase) {
-					const ::bro::TKeyValJSONDB							& childDatabase							= databases[iDatabase];
+					const ::bro::TKeyValJSONDBV0							& childDatabase							= databases[iDatabase];
 					bool												bAliasMatch								= -1 != ::gpk::find(fieldToExpand, {childDatabase.Val.Bindings.begin(), childDatabase.Val.Bindings.size()});
 					int64_t												indexRecordToExpandRelative				= (int64_t)indexRecordToExpand - childDatabase.Val.Range.Offset;
 					const ::gpk::SJSONReader							& childReader							= childDatabase.Val.Table.Reader;
@@ -104,7 +104,7 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 }
 
 ::gpk::error_t									bro::generate_output_for_db				
-	( const ::gpk::view_array<const ::bro::TKeyValJSONDB>	& databases
+	( const ::gpk::view_array<const ::bro::TKeyValJSONDBV0>	& databases
 	, const ::bro::SQuery									& query
 	, const ::gpk::view_const_string						& databaseName
 	, ::gpk::array_pod<char_t>								& output
@@ -113,11 +113,11 @@ static	::gpk::error_t							generate_record_with_expansion			(const ::gpk::view_
 {
 	int32_t												indexDB									= ::gpk::find(databaseName, ::gpk::view_array<const ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabaseV0>>{databases.begin(), databases.size()});
 	rew_if(-1 == indexDB, "Database not found : %s", databaseName.begin());
-	::bro::TKeyValJSONDB								dbObject								= databases[indexDB];
+	::bro::TKeyValJSONDBV0								dbObject								= databases[indexDB];
 	const ::gpk::SJSONReader							& dbReader								= dbObject.Val.Table.Reader;
 	if(0 == dbReader.Tree.size()) {
 		::insertCacheMiss(cacheMisses, databaseName, (int64_t)query.Detail);
-		return 1;
+ 		return 1;
 	}
 	const ::gpk::SJSONNode								& jsonRoot								= *dbReader.Tree[0];
 	int32_t												partialMiss								= 0;

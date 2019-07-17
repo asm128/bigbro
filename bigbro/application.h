@@ -30,7 +30,7 @@ namespace bba // bigbroapp
 		::gpk::SFramework														Framework;
 		::gpk::ptr_obj<::bba::TRenderTarget>									Offscreen							= {};
 
-		::bro::SBigBro															BigBro								= {};
+		::bro::SBigBroV0															BigBro								= {};
 		::bba::SServerAsync														ServerAsync							= {};
 		::gpk::array_obj<::bba::TKeyValServerAsync>								Servers								= {};
 
@@ -46,7 +46,7 @@ namespace bba // bigbroapp
 	};
 
 	::gpk::error_t															loadConfig							(::bba::SApplication & app);
-	::gpk::error_t															updateCRUDServer					(::bro::SBigBro & appState, ::bba::SServerAsync & serverAsync);
+	::gpk::error_t															updateCRUDServer					(::bro::SBigBroV0 & appState, ::bba::SServerAsync & serverAsync);
 } // namespace
 
 

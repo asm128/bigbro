@@ -12,7 +12,7 @@
 	return 0;
 }
 
-::gpk::error_t									bro::loadConfig				(::bro::SBigBro & appState, const ::gpk::SJSONReader & configReader, int32_t indexBigBroNode)	{
+::gpk::error_t									bro::loadConfig				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, int32_t indexBigBroNode)	{
 	::gpk::view_const_string							jsonResult					= {};
 	const int32_t										indexObjectDatabases		= (-1 == indexBigBroNode) 
 		? ::gpk::jsonExpressionResolve("application.bigbro.databases", configReader, 0, jsonResult) 
@@ -27,7 +27,7 @@
 	for(uint32_t iDatabase = 0, countDatabases = (uint32_t)databaseArraySize; iDatabase < countDatabases; ++iDatabase) {
 		sprintf_s(temp, "[%u].name", iDatabase);
 		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
-		::bro::TKeyValJSONDB								& jsonDB					= appState.Databases[iDatabase];
+		::bro::TKeyValJSONDBV0								& jsonDB					= appState.Databases[iDatabase];
 		jsonDB.Key										= jsonResult;
 		{
 			sprintf_s(temp, "[%u].block", iDatabase);

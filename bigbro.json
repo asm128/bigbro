@@ -1,8 +1,8 @@
-{	"assets": 
-	{	"jsondb"		: { "path" : "../gpk_data/jsondb"		}
+{	"data" : 
+	{	"jsondb"		: { "path" : "../gpk_data/razor_db"		}
 	,	"jsondb_cache"	: { "path" : "../gpk_data/razor_cache"	}
 	},
-	"application": 
+	"application" :
 	{	
 		"bigbro": 
 		{	"listen_port"	: "15567"

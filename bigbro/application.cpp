@@ -47,7 +47,7 @@ static	::gpk::error_t										loadServerConfig			(::bba::SApplication & app)			
 }
 
 
-static	::gpk::error_t										processPayload				(::bro::SBigBro & appState, const ::gpk::view_const_byte & payload, ::gpk::array_pod<char_t> & partialResult, ::gpk::array_pod<char_t> & bytesResponse)						{
+static	::gpk::error_t										processPayload				(::bro::SBigBroV0 & appState, const ::gpk::view_const_byte & payload, ::gpk::array_pod<char_t> & partialResult, ::gpk::array_pod<char_t> & bytesResponse)						{
 	::bro::SRequestPacket											packetReceived;
 	::bro::requestRead(packetReceived, payload);
 	{	// --- Retrieve query from request.
@@ -155,7 +155,7 @@ static	::gpk::error_t										sendGeneratedResponses		(::bba::SServerAsync & se
 	return 0;
 }
 
-::gpk::error_t												bba::updateCRUDServer		(::bro::SBigBro & appState, ::bba::SServerAsync & serverAsync)						{
+::gpk::error_t												bba::updateCRUDServer		(::bro::SBigBroV0 & appState, ::bba::SServerAsync & serverAsync)						{
 	::pickUpQueueReceived(serverAsync);
 
 	::gpk::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
