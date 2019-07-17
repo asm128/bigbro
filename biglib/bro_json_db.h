@@ -25,9 +25,9 @@ namespace bro
 	struct SJSONDatabaseV1 {
 		::gpk::array_obj<::gpk::view_const_string>									Bindings					= {};
 		uint64_t																	BlockSize					= 0;
-		::gpk::SJSONFile															Table						= {};
-		::gpk::array_obj<::gpk::SJSONFile>											Blocks						= {};
 		::gpk::array_obj<uint64_t>													BlockOffsets				= {};
+		::gpk::array_obj<::gpk::SJSONFile>											Blocks						= {};
+		::gpk::SJSONFile															Table						= {};
 		::bro::DATABASE_HOST														HostType					= ::bro::DATABASE_HOST_LOCAL;
 	};
 

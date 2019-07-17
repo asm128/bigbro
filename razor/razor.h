@@ -10,7 +10,7 @@ namespace razor
 		::gpk::SJSONFile							Config						= {};
 	};
 
-	::gpk::error_t								loadConfig					(::razor::SRazorAppV0 & appState, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString);
+	::gpk::error_t								loadConfig					(::razor::SRazorAppV0 & appState, const ::gpk::view_const_string & jsonFileName, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString);
 	::gpk::error_t								processQuery						
 		( ::gpk::array_obj<::bro::TKeyValJSONDBV0>	& databases
 		, const ::bro::SQuery						& query

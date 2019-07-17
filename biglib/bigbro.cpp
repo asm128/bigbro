@@ -29,7 +29,7 @@
 		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
 		::bro::TKeyValJSONDBV0								& jsonDB					= appState.Databases[iDatabase];
 		jsonDB.Key										= jsonResult;
-		{
+		{	// -- Load database block size
 			sprintf_s(temp, "[%u].block", iDatabase);
 			int32_t												indexBlockNode				= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 			gwarn_if(errored(indexBlockNode), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
@@ -37,24 +37,33 @@
 				::gpk::parseIntegerDecimal(jsonResult, &(jsonDB.Val.BlockSize = 0));
 			}
 		}
-		sprintf_s(temp, "[%u].type", iDatabase);
-		jsonResult										= {};
-		int32_t												typeFound					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 		::gpk::array_pod<char_t>							dbfilename					= jsonDB.Key;
 		dbfilename.append(".json");
-		gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
-		jsonDB.Val.HostType								= (::gpk::view_const_string{"local"} == jsonResult || errored(typeFound)) ? ::bro::DATABASE_HOST_LOCAL : ::bro::DATABASE_HOST_REMOTE;
-		// -- Load field bindings
-		sprintf_s(temp, "[%u].bind", iDatabase);
-		::gpk::error_t										indexBindArray				= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
-		w_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin())
-		else {
-			::gpk::error_t										sizeBindArray				= ::gpk::jsonArraySize(*configReader[indexBindArray]);
-			jsonDB.Val.Bindings.resize(sizeBindArray);
-			for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
-				sprintf_s(temp, "[%u]", iBind);
-				gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
-				jsonDB.Val.Bindings[iBind]						= jsonResult;
+		{	// -- Load database modes (remote, deflate)
+			sprintf_s(temp, "[%u].type", iDatabase);
+			jsonResult										= {};
+			int32_t												typeFound					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
+			jsonDB.Val.HostType								= (::gpk::view_const_string{"local"} == jsonResult || errored(typeFound)) ? ::bro::DATABASE_HOST_LOCAL : ::bro::DATABASE_HOST_REMOTE;
+			sprintf_s(temp, "[%u].deflate", iDatabase);
+			jsonResult										= {};
+			typeFound										= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			gwarn_if(errored(typeFound), "Failed to load database compression for database: %s. Defaulting to local.", dbfilename.begin());
+			if(::gpk::view_const_string{"true"} == jsonResult)
+				jsonDB.Val.HostType								|= ::bro::DATABASE_HOST_DEFLATE;
+		}
+		{	// -- Load field bindings
+			sprintf_s(temp, "[%u].bind", iDatabase);
+			::gpk::error_t										indexBindArray				= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			w_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin())
+			else {
+				::gpk::error_t										sizeBindArray				= ::gpk::jsonArraySize(*configReader[indexBindArray]);
+				jsonDB.Val.Bindings.resize(sizeBindArray);
+				for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
+					sprintf_s(temp, "[%u]", iBind);
+					gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
+					jsonDB.Val.Bindings[iBind]						= jsonResult;
+				}
 			}
 		}
 		if(::bro::DATABASE_HOST_LOCAL != jsonDB.Val.HostType) 

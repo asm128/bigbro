@@ -17,8 +17,8 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 	return 0;
 }
 
-::gpk::error_t							razor::loadConfig			(::razor::SRazorAppV0 & appState, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString)	{
-	gpk_necall(::gpk::jsonFileRead(appState.Config, "razor.json"), "Failed to load configuration file: %s.", "razor.json");
+::gpk::error_t							razor::loadConfig			(::razor::SRazorAppV0 & appState, const ::gpk::view_const_string & jsonFileName, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString)	{
+	gpk_necall(::gpk::jsonFileRead(appState.Config, jsonFileName), "Failed to load configuration file: %s.", jsonFileName.begin());
 	gpk_necall(::bro::loadConfig(appState.BigBro, appState.Config.Reader), "%s", "Failed to load query.");
 	gpk_necall(::bro::loadQuery(appState.BigBro.Query, queryString), "%s", "Failed to load query.");
 	gpk_necall(::loadDetail(queryString, appState.BigBro.Query.Detail), "%s", "Failed to load query.");
