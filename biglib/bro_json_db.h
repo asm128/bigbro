@@ -28,6 +28,7 @@ namespace bro
 		::gpk::array_obj<uint64_t>													BlockOffsets				= {};
 		::gpk::array_obj<::gpk::SJSONFile>											Blocks						= {};
 		::gpk::SJSONFile															Table						= {};
+		::gpk::view_const_string													EncryptionKey				= {};
 		::bro::DATABASE_HOST														HostType					= ::bro::DATABASE_HOST_LOCAL;
 	};
 
@@ -39,6 +40,7 @@ namespace bro
 
 	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::array_pod<int64_t>>	TCacheMissRecord;
 	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabaseV0>	TKeyValJSONDBV0;
+	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::bro::SJSONDatabaseV1>	TKeyValJSONDBV1;
 	::gpk::error_t															generate_output_for_db				
 		( const ::gpk::view_array<const ::bro::TKeyValJSONDBV0>	& databases
 		, const ::bro::SQuery									& query

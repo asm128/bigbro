@@ -3,20 +3,53 @@
 #include "gpk_json_expression.h"
 #include "gpk_parse.h"
 
-::gpk::error_t									bro::loadQuery							(::bro::SQuery& query, const ::gpk::view_array<const ::gpk::TKeyValConstString> keyvals)	{
+::gpk::error_t									bro::loadQuery				(::bro::SQuery& query, const ::gpk::view_array<const ::gpk::TKeyValConstString> keyvals)	{
 	::gpk::keyvalNumeric("offset"	, keyvals, query.Range.Offset	);
 	::gpk::keyvalNumeric("limit"	, keyvals, query.Range.Count	);
-	::gpk::error_t										indexExpand								= ::gpk::find("expand", keyvals);
+	::gpk::error_t										indexExpand					= ::gpk::find("expand", keyvals);
 	if(-1 != indexExpand) 
 		query.Expand									= keyvals[indexExpand].Val;
 	return 0;
 }
 
-::gpk::error_t									bro::loadConfig				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, int32_t indexBigBroNode)	{
+::gpk::error_t									bro::blockFileName			(::gpk::array_pod<char_t> & filename, const ::bro::TKeyValJSONDBV1 & jsonDB, const uint32_t block) {
+	filename										= jsonDB.Key;
+	char												temp[64]					= {};
+	const ::gpk::view_const_string						extension					= jsonDB.Val.EncryptionKey.size() 
+		? ((::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "czsn" : "cjsn")
+		: ((::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "zson" : "json")
+		;
+	sprintf_s(temp, ".%u.%s", block, extension.begin());
+	filename.append(temp);
+	return 0;
+}
+
+::gpk::error_t									bro::tableFileName			(::gpk::array_pod<char_t> & filename, const ::bro::TKeyValJSONDBV0 & jsonDB) {
+	filename										= jsonDB.Key;
+	char												temp[64]					= {};
+	const ::gpk::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "zson" : "json";
+	sprintf_s(temp, ".%s", extension.begin());
+	filename.append(temp);
+	return 0;
+}
+
+::gpk::error_t									bro::blockFileLoad			(::bro::TKeyValJSONDBV1 & jsonDB, uint32_t block)	{
+	::gpk::array_pod<char_t>							fileName					= {};
+	::bro::blockFileName(fileName, jsonDB, block);
+	if(0 == jsonDB.Val.EncryptionKey.size()) {
+		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {fileName.begin(), fileName.size()}), "Failed to load database: %s.", fileName.begin());
+	}
+	else {
+	
+	}
+	return 0;
+}
+
+::gpk::error_t									bro::loadConfig				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, int32_t indexAppNode)	{
 	::gpk::view_const_string							jsonResult					= {};
-	const int32_t										indexObjectDatabases		= (-1 == indexBigBroNode) 
+	const int32_t										indexObjectDatabases		= (-1 == indexAppNode) 
 		? ::gpk::jsonExpressionResolve("application.bigbro.databases", configReader, 0, jsonResult) 
-		: ::gpk::jsonExpressionResolve("databases", configReader, indexBigBroNode, jsonResult) 
+		: ::gpk::jsonExpressionResolve("databases", configReader, indexAppNode, jsonResult) 
 		;
 	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
 	jsonResult										= "";
@@ -37,8 +70,8 @@
 				::gpk::parseIntegerDecimal(jsonResult, &(jsonDB.Val.BlockSize = 0));
 			}
 		}
-		::gpk::array_pod<char_t>							dbfilename					= jsonDB.Key;
-		dbfilename.append(".json");
+		::gpk::array_pod<char_t>							dbfilename					= {};
+		::bro::tableFileName(dbfilename, jsonDB);
 		{	// -- Load database modes (remote, deflate)
 			sprintf_s(temp, "[%u].type", iDatabase);
 			jsonResult										= {};
@@ -48,7 +81,7 @@
 			sprintf_s(temp, "[%u].deflate", iDatabase);
 			jsonResult										= {};
 			typeFound										= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
-			gwarn_if(errored(typeFound), "Failed to load database compression for database: %s. Defaulting to local.", dbfilename.begin());
+			gwarn_if(errored(typeFound), "Failed to load database compression for database: %s. Defaulting to uncompressed.", dbfilename.begin());
 			if(::gpk::view_const_string{"true"} == jsonResult)
 				jsonDB.Val.HostType								|= ::bro::DATABASE_HOST_DEFLATE;
 		}
