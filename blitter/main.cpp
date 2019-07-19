@@ -90,16 +90,17 @@ int										main							(int argc, char ** argv)		{
 
 	::gpk::SJSONFile							jsonFileToSplit					= {};
 	gpk_necall(::gpk::jsonFileRead(jsonFileToSplit, params.FileNameSrc), "Failed to load file: %s.", params.FileNameSrc.begin());
+	ree_if(0 == jsonFileToSplit.Reader.Tree.size(), "Invalid input format. %s", "File content is not a JSON array.");
+	ree_if(jsonFileToSplit.Reader.Object[0].Type != ::gpk::JSON_TYPE_ARRAY, "Invalid input format. %s", ::gpk::get_value_label(jsonFileToSplit.Reader.Object[0].Type).begin());
 
 	::gpk::array_obj<::gpk::array_pod<char_t>>	outputJsons;
-	ree_if(0 == jsonFileToSplit.Reader.Tree.size(), "Invalid input format. %s", "JSON contents not an array.");
-	ree_if(jsonFileToSplit.Reader.Object[0].Type != ::gpk::JSON_TYPE_ARRAY, "Invalid input format. %s", ::gpk::get_value_label(jsonFileToSplit.Reader.Object[0].Type).begin());
 	gpk_necall(::jsonArraySplit(*jsonFileToSplit.Reader.Tree[0], jsonFileToSplit.Reader.View , params.BlockSize, outputJsons), "%s", "Unknown error!");
 
 	::gpk::array_pod<char_t>					partFileName					= {};
 	::gpk::array_pod<char_t>					pathToWriteTo					= {};
 	::gpk::array_pod<char_t>					deflated						= {};
 	::gpk::array_pod<char_t>					encrypted						= {};
+	::gpk::array_pod<char_t>					verify							= {};
 	for(uint32_t iPart = 0; iPart < outputJsons.size(); ++iPart) {
 		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
 		pathToWriteTo							= dbFolderName;
@@ -115,6 +116,9 @@ int										main							(int argc, char ** argv)		{
 				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{partBytes.begin(), partBytes.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
 				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), encrypted.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
+				verify.clear();
+				gpk_necall(::gpk::aesDecode(encrypted, params.EncryptionKey, ::gpk::AES_LEVEL_256, verify), "Failed to inflate part: %u.", iPart);
+				ree_if(verify != partBytes, "Sanity check failed: %s.", "??");
 				encrypted.clear();
 			}
 		}
@@ -124,15 +128,24 @@ int										main							(int argc, char ** argv)		{
 			if(0 == params.EncryptionKey.size()) {
 				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), deflated.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, deflated), "Failed to write part: %u.", iPart);
+				verify.clear();
+				gpk_necall(::gpk::arrayInflate({&deflated[sizeof(uint32_t)], deflated.size() - sizeof(uint32_t)}, verify), "Failed to inflate part: %u.", iPart);
+				ree_if(verify != partBytes, "Sanity check failed: %s.", "??");
 				deflated.clear();
 			} else {
 				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{deflated.begin(), deflated.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
 				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), encrypted.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
+				deflated.clear();
+				gpk_necall(::gpk::aesDecode(encrypted, params.EncryptionKey, ::gpk::AES_LEVEL_256, deflated), "Failed to inflate part: %u.", iPart);
+				verify.clear();
+				gpk_necall(::gpk::arrayInflate({&deflated[sizeof(uint32_t)], deflated.size() - sizeof(uint32_t)}, verify), "Failed to inflate part: %u.", iPart);
+				ree_if(verify != partBytes, "Sanity check failed: %s.", "??");
 				encrypted.clear();
 				deflated.clear();
 			}
 		}
+		verify.clear();
 	}
 	return 0; 
 }
