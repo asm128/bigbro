@@ -9,6 +9,7 @@
 #include "gpk_parse.h"
 #include "gpk_find.h"
 #include "gpk_deflate.h"
+#include "gpk_aes.h"
 
 #include "bigbro.h"
 
@@ -76,16 +77,17 @@ int										loadParams						(SSplitParams& params, int argc, char ** argv)		{
 // Splits a file into file.split.## parts.
 ::gpk::error_t							setUpFolder						(SSplitParams& params, ::gpk::array_pod<char_t> & dbFolderName)		{
 	char										folderNameDigits	[32]		= {};
+	const uint32_t								offset							= dbFolderName.size();
 	sprintf_s(folderNameDigits, ".%u.db/", params.BlockSize);
 	gpk_necall(dbFolderName.append(::gpk::view_const_string{"./"})				, "%s", "Out of memory?");
 	gpk_necall(dbFolderName.append(params.PathWithoutExtension)					, "%s", "Out of memory?");
 	gpk_necall(dbFolderName.append(::gpk::view_const_string{folderNameDigits})	, "%s", "Out of memory?");
 	gpk_necall(::gpk::pathCreate({dbFolderName.begin(), dbFolderName.size()}), "Failed to create database folder: %s.", dbFolderName.begin());
-	info_printf("Output folder: %s.", dbFolderName.begin());
+	info_printf("Output folder: %s.", dbFolderName.begin(), offset);
 	return 0;
 }
 
-// Splits a file into file.split.## parts.
+// Splits a file.json into file.#blocksize.db/file.##.json parts.
 int										main							(int argc, char ** argv)		{
 	SSplitParams								params							= {};
 	gpk_necall(::loadParams(params, argc, argv), "%s", "");
@@ -96,17 +98,19 @@ int										main							(int argc, char ** argv)		{
 	gpk_necall(::gpk::jsonFileRead(jsonFileToSplit, params.FileNameSrc), "Failed to load file: %s.", params.FileNameSrc.begin());
 
 	::gpk::array_obj<::gpk::array_pod<char_t>>	outputJsons;
-	ree_if(0 == jsonFileToSplit.Reader.Tree.size() || jsonFileToSplit.Reader.Object[0].Type != ::gpk::JSON_TYPE_ARRAY, "Invalid input format. %s", "JSON contents not an array.");
+	ree_if(0 == jsonFileToSplit.Reader.Tree.size(), "Invalid input format. %s", "JSON contents not an array.");
+	ree_if(jsonFileToSplit.Reader.Object[0].Type != ::gpk::JSON_TYPE_ARRAY, "Invalid input format. %s", ::gpk::get_value_label(jsonFileToSplit.Reader.Object[0].Type).begin());
 	gpk_necall(::jsonArraySplit(*jsonFileToSplit.Reader.Tree[0], jsonFileToSplit.Reader.View , params.BlockSize, outputJsons), "%s", "Unknown error!");
 
 	::gpk::array_pod<char_t>					partFileName					= {};
 	::gpk::array_pod<char_t>					deflated						= {};
 	for(uint32_t iPart = 0; iPart < outputJsons.size(); ++iPart) {
 		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
-		::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart);
+		gpk_necall(::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart), "%s", "??");
 		info_printf("Saving part file to disk: '%s'.", partFileName.begin());
-		if(false == params.DeflatedOutput)
+		if(false == params.DeflatedOutput) {
 			gpk_necall(::gpk::fileFromMemory({partFileName.begin(), partFileName.size()}, partBytes), "Failed to write part: %u.", iPart);
+		}
 		else {
 			gpk_necall(deflated.append((char*)&partBytes.size(), sizeof(uint32_t)), "%s", "Out of memory?");;
 			gpk_necall(::gpk::arrayDeflate(partBytes, deflated), "Failed to deflate part: %u.", iPart);

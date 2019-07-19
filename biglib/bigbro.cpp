@@ -20,7 +20,7 @@
 		: ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "json")
 		;
 	sprintf_s(temp, ".%u.%s", block, extension.begin());
-	filename.append(::gpk::view_const_string{temp});
+	gpk_necall(filename.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
 }
 
@@ -28,7 +28,7 @@
 	foldername										= dbName;
 	char												temp[64]					= {};
 	sprintf_s(temp, ".%u.db", block);
-	foldername.append(::gpk::view_const_string{temp});
+	gpk_necall(foldername.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
 }
 
@@ -37,13 +37,13 @@
 	char												temp[64]					= {};
 	const ::gpk::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "zson" : "json";
 	sprintf_s(temp, ".%s", extension.begin());
-	filename.append(::gpk::view_const_string{temp});
+	gpk_necall(filename.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
 }
 
 ::gpk::error_t									bro::blockFileLoad			(::bro::TKeyValJSONDBV1 & jsonDB, uint32_t block)	{
 	::gpk::array_pod<char_t>							fileName					= {};
-	::bro::blockFileName(fileName, jsonDB.Key, jsonDB.Val.EncryptionKey, jsonDB.Val.HostType, block);
+	gpk_necall(::bro::blockFileName(fileName, jsonDB.Key, jsonDB.Val.EncryptionKey, jsonDB.Val.HostType, block), "%s", "Out of memory?");
 	if(0 == jsonDB.Val.EncryptionKey.size()) {
 		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {fileName.begin(), fileName.size()}), "Failed to load database: %s.", fileName.begin());
 	}
@@ -63,8 +63,8 @@
 	jsonResult										= "";
 	const ::gpk::error_t								databaseArraySize			= ::gpk::jsonArraySize(*configReader[indexObjectDatabases]);
 	gpk_necall(databaseArraySize, "%s", "Failed to get database count from config file.");
-	char												temp[64];
-	appState.Databases.resize(databaseArraySize);
+	char												temp[64]					= {};
+	gpk_necall(appState.Databases.resize(databaseArraySize), "%s", "Out of memory?");
 	for(uint32_t iDatabase = 0, countDatabases = (uint32_t)databaseArraySize; iDatabase < countDatabases; ++iDatabase) {
 		sprintf_s(temp, "[%u].name", iDatabase);
 		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
@@ -79,7 +79,7 @@
 			}
 		}
 		::gpk::array_pod<char_t>							dbfilename					= {};
-		::bro::tableFileName(dbfilename, jsonDB);
+		gpk_necall(::bro::tableFileName(dbfilename, jsonDB), "%s", "??");
 		{	// -- Load database modes (remote, deflate)
 			sprintf_s(temp, "[%u].type", iDatabase);
 			jsonResult										= {};
@@ -99,7 +99,7 @@
 			w_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin())
 			else {
 				::gpk::error_t										sizeBindArray				= ::gpk::jsonArraySize(*configReader[indexBindArray]);
-				jsonDB.Val.Bindings.resize(sizeBindArray);
+				gpk_necall(jsonDB.Val.Bindings.resize(sizeBindArray), "%s", "Out of memory?");;
 				for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
 					sprintf_s(temp, "[%u]", iBind);
 					gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
