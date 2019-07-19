@@ -98,19 +98,20 @@ int										main							(int argc, char ** argv)		{
 	::gpk::array_pod<char_t>					pathToWriteTo					= {};
 	::gpk::array_pod<char_t>					deflated						= {};
 	::gpk::array_pod<char_t>					encrypted						= {};
-	::gpk::SAESContext							aes;
 	for(uint32_t iPart = 0; iPart < outputJsons.size(); ++iPart) {
 		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
 		pathToWriteTo							= dbFolderName;
 		gpk_necall(::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart), "%s", "??");
 		pathToWriteTo.append(partFileName);
 		
-		info_printf("Saving part file to disk: '%s'.", pathToWriteTo.begin());
 		if(false == params.DeflatedOutput) {
-			if(0 == params.EncryptionKey.size()) 
+			if(0 == params.EncryptionKey.size()) {
+				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), partBytes.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, partBytes), "Failed to write part: %u.", iPart);
+			}
 			else {
 				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{partBytes.begin(), partBytes.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
+				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), encrypted.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
 				encrypted.clear();
 			}
@@ -119,10 +120,12 @@ int										main							(int argc, char ** argv)		{
 			gpk_necall(deflated.append((char*)&partBytes.size(), sizeof(uint32_t)), "%s", "Out of memory?");;
 			gpk_necall(::gpk::arrayDeflate(partBytes, deflated), "Failed to deflate part: %u.", iPart);
 			if(0 == params.EncryptionKey.size()) {
+				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), deflated.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, deflated), "Failed to write part: %u.", iPart);
 				deflated.clear();
 			} else {
 				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{deflated.begin(), deflated.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
+				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), encrypted.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
 				encrypted.clear();
 				deflated.clear();
