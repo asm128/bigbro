@@ -12,15 +12,23 @@
 	return 0;
 }
 
-::gpk::error_t									bro::blockFileName			(::gpk::array_pod<char_t> & filename, const ::bro::TKeyValJSONDBV1 & jsonDB, const uint32_t block) {
-	filename										= jsonDB.Key;
+::gpk::error_t									bro::blockFileName			(::gpk::array_pod<char_t> & filename, const ::gpk::view_const_string & dbName, const ::gpk::view_const_string & encryptionKey, const ::bro::DATABASE_HOST hostType, const uint32_t block) {
+	filename										= dbName;
 	char												temp[64]					= {};
-	const ::gpk::view_const_string						extension					= jsonDB.Val.EncryptionKey.size() 
-		? ((::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "czsn" : "cjsn")
-		: ((::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "zson" : "json")
+	const ::gpk::view_const_string						extension					= encryptionKey.size() 
+		? ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "czon" : "cson")
+		: ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "json")
 		;
 	sprintf_s(temp, ".%u.%s", block, extension.begin());
-	filename.append(temp);
+	filename.append(::gpk::view_const_string{temp});
+	return 0;
+}
+
+::gpk::error_t									bro::tableFolderName			(::gpk::array_pod<char_t> & foldername, const ::gpk::view_const_string & dbName, const uint32_t block) {
+	foldername										= dbName;
+	char												temp[64]					= {};
+	sprintf_s(temp, ".%u.db", block);
+	foldername.append(::gpk::view_const_string{temp});
 	return 0;
 }
 
@@ -29,13 +37,13 @@
 	char												temp[64]					= {};
 	const ::gpk::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "zson" : "json";
 	sprintf_s(temp, ".%s", extension.begin());
-	filename.append(temp);
+	filename.append(::gpk::view_const_string{temp});
 	return 0;
 }
 
 ::gpk::error_t									bro::blockFileLoad			(::bro::TKeyValJSONDBV1 & jsonDB, uint32_t block)	{
 	::gpk::array_pod<char_t>							fileName					= {};
-	::bro::blockFileName(fileName, jsonDB, block);
+	::bro::blockFileName(fileName, jsonDB.Key, jsonDB.Val.EncryptionKey, jsonDB.Val.HostType, block);
 	if(0 == jsonDB.Val.EncryptionKey.size()) {
 		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {fileName.begin(), fileName.size()}), "Failed to load database: %s.", fileName.begin());
 	}

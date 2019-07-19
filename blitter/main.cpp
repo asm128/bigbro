@@ -10,6 +10,8 @@
 #include "gpk_find.h"
 #include "gpk_deflate.h"
 
+#include "bigbro.h"
+
 static constexpr const uint32_t			DEFAULT_BLOCK_SIZE				= 1024;
 
 ::gpk::error_t							jsonArraySplit					(const ::gpk::SJSONNode & jsonArrayToSplit, const ::gpk::view_array<::gpk::view_const_string> & jsonViews, const uint32_t blockSize, ::gpk::array_obj<::gpk::array_pod<char_t>> & outputJsons)		{
@@ -36,6 +38,7 @@ struct SSplitParams {
 	::gpk::view_const_string				FileNameSrc						= {};	// First parameter is the only parameter, which is the name of the source file to be split.
 	::gpk::view_const_string				PathWithoutExtension			= {};	// First parameter is the only parameter, which is the name of the source file to be split.
 	::gpk::view_const_string				DBName							= {};	// First parameter is the only parameter, which is the name of the source file to be split.
+	::gpk::view_const_string				EncryptionKey					= {};	// First parameter is the only parameter, which is the name of the source file to be split.
 
 	uint32_t								BlockSize						= 0;
 	bool									DeflatedOutput					= false;
@@ -52,6 +55,8 @@ int										loadParams						(SSplitParams& params, int argc, char ** argv)		{
 		info_printf("Using block size: %u.", params.BlockSize);
 	}
 	params.DeflatedOutput					= (argc >  3 && argv[3][0] != '0');
+	if(argc >  4)
+		params.EncryptionKey					= {argv[4], (uint32_t)-1};
 	//params.DeflatedInput					= (argc >  4 && argv[4][0] != '0');
 	if(0 == params.BlockSize)
 		params.BlockSize						= ::DEFAULT_BLOCK_SIZE;
@@ -80,16 +85,6 @@ int										loadParams						(SSplitParams& params, int argc, char ** argv)		{
 	return 0;
 }
 
-::gpk::error_t							buildPartFilename				(int32_t iPart, const ::gpk::view_const_char& dbName, bool deflatedOutput, const ::gpk::view_const_char& dbFolderName, ::gpk::array_pod<char_t> & partFileName)		{
-	char										fileNameDigits	[32]			= {};
-	partFileName							= dbFolderName;
-	gpk_necall(partFileName.append(dbName), "%s", "Out of memory?");
-	sprintf_s(fileNameDigits, ".%u", iPart);
-	gpk_necall(partFileName.append(::gpk::view_const_string{fileNameDigits}), "%s", "Out of memory?");
-	gpk_necall(partFileName.append(deflatedOutput ? ".zson" : ".json"), "%s", "Out of memory?");
-	return 0;
-}
-
 // Splits a file into file.split.## parts.
 int										main							(int argc, char ** argv)		{
 	SSplitParams								params							= {};
@@ -108,7 +103,7 @@ int										main							(int argc, char ** argv)		{
 	::gpk::array_pod<char_t>					deflated						= {};
 	for(uint32_t iPart = 0; iPart < outputJsons.size(); ++iPart) {
 		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
-		::buildPartFilename(iPart, params.DBName, params.DeflatedOutput, dbFolderName, partFileName);
+		::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart);
 		info_printf("Saving part file to disk: '%s'.", partFileName.begin());
 		if(false == params.DeflatedOutput)
 			gpk_necall(::gpk::fileFromMemory({partFileName.begin(), partFileName.size()}, partBytes), "Failed to write part: %u.", iPart);
