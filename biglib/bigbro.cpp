@@ -3,7 +3,7 @@
 #include "gpk_json_expression.h"
 #include "gpk_parse.h"
 
-::gpk::error_t									bro::loadQuery				(::bro::SQuery& query, const ::gpk::view_array<const ::gpk::TKeyValConstString> keyvals)	{
+::gpk::error_t									bro::queryLoad				(::bro::SQuery& query, const ::gpk::view_array<const ::gpk::TKeyValConstString> keyvals)	{
 	::gpk::keyvalNumeric("offset"	, keyvals, query.Range.Offset	);
 	::gpk::keyvalNumeric("limit"	, keyvals, query.Range.Count	);
 	::gpk::error_t										indexExpand					= ::gpk::find("expand", keyvals);
@@ -32,10 +32,10 @@
 	return 0;
 }
 
-::gpk::error_t									bro::tableFileName			(::gpk::array_pod<char_t> & filename, const ::bro::TKeyValJSONDBV0 & jsonDB) {
-	filename										= jsonDB.Key;
+::gpk::error_t									bro::tableFileName			(::gpk::array_pod<char_t> & filename, const ::bro::DATABASE_HOST & hostType, const ::gpk::view_const_string & jsonDBKey) {
+	filename										= jsonDBKey;
 	char												temp[64]					= {};
-	const ::gpk::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & jsonDB.Val.HostType) ? "zson" : "json";
+	const ::gpk::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "json";
 	sprintf_s(temp, ".%s", extension.begin());
 	gpk_necall(filename.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
@@ -53,11 +53,11 @@
 	return 0;
 }
 
-::gpk::error_t									bro::loadConfig				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, int32_t indexAppNode)	{
+::gpk::error_t									bro::configLoad				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, const ::gpk::view_array<const ::gpk::view_const_string> & databasesToLoad, int32_t indexAppNode)	{
 	::gpk::view_const_string							jsonResult					= {};
 	const int32_t										indexObjectDatabases		= (-1 == indexAppNode) 
 		? ::gpk::jsonExpressionResolve("application.bigbro.databases", configReader, 0, jsonResult) 
-		: ::gpk::jsonExpressionResolve("databases", configReader, indexAppNode, jsonResult) 
+		: indexAppNode
 		;
 	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
 	jsonResult										= "";
@@ -79,7 +79,7 @@
 			}
 		}
 		::gpk::array_pod<char_t>							dbfilename					= {};
-		gpk_necall(::bro::tableFileName(dbfilename, jsonDB), "%s", "??");
+		gpk_necall(::bro::tableFileName(dbfilename, jsonDB.Val.HostType, jsonDB.Key), "%s", "??");
 		{	// -- Load database modes (remote, deflate)
 			sprintf_s(temp, "[%u].type", iDatabase);
 			jsonResult										= {};
@@ -112,7 +112,15 @@
 		if(jsonDB.Val.BlockSize)
 			continue;	// block databases get loaded on-demand
 		// -- Load json database file.
-		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+		if(0 == databasesToLoad.size())
+			gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+		else {
+			for(uint32_t iDB = 0; iDB = databasesToLoad.size(); ++iDB) 
+				if(databasesToLoad[iDB] == jsonDB.Key) {
+					gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+					break;
+				}
+		}
 	}
 	return 0;
 }

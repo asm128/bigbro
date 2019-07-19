@@ -42,7 +42,7 @@ static	::gpk::error_t										loadServerConfig			(::bba::SApplication & app)			
 
 ::gpk::error_t												bba::loadConfig					(::bba::SApplication & app)						{
 	gpk_necall(::loadServerConfig(app), "%s", "Error loading networking configuration.");
-	gpk_necall(::bro::loadConfig(app.BigBro, app.Framework.JSONConfig.Reader), "%s", "Failed to load BigBro configuration.");
+	gpk_necall(::bro::configLoad(app.BigBro, app.Framework.JSONConfig.Reader), "%s", "Failed to load BigBro configuration.");
 	return 0;
 }
 
@@ -59,7 +59,7 @@ static	::gpk::error_t										processPayload				(::bro::SBigBroV0 & appState, c
 			::gpk::TKeyValConstString										& keyValDst					= qsKeyVals[iKeyVal];
 			::gpk::keyval_split(queryStringElements[iKeyVal], keyValDst);
 		}
-		::bro::loadQuery(appState.Query, qsKeyVals);
+		::bro::queryLoad(appState.Query, qsKeyVals);
 	}
 	// --- Generate response
 	::gpk::view_const_string										dbName						= (packetReceived.Path.size() > 1) ? ::gpk::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::gpk::view_const_string{};;

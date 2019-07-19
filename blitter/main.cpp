@@ -56,9 +56,9 @@ int										loadParams						(SSplitParams& params, int argc, char ** argv)		{
 		info_printf("Using block size: %u.", params.BlockSize);
 	}
 	params.DeflatedOutput					= (argc >  3 && argv[3][0] != '0');
-	if(argc >  4)
+	if(argc > 4)
 		params.EncryptionKey					= {argv[4], (uint32_t)-1};
-	//params.DeflatedInput					= (argc >  4 && argv[4][0] != '0');
+
 	if(0 == params.BlockSize)
 		params.BlockSize						= ::DEFAULT_BLOCK_SIZE;
 
@@ -74,25 +74,17 @@ int										loadParams						(SSplitParams& params, int argc, char ** argv)		{
 	return 0;
 }
 
-// Splits a file into file.split.## parts.
-::gpk::error_t							setUpFolder						(SSplitParams& params, ::gpk::array_pod<char_t> & dbFolderName)		{
-	char										folderNameDigits	[32]		= {};
-	const uint32_t								offset							= dbFolderName.size();
-	sprintf_s(folderNameDigits, ".%u.db/", params.BlockSize);
-	gpk_necall(dbFolderName.append(::gpk::view_const_string{"./"})				, "%s", "Out of memory?");
-	gpk_necall(dbFolderName.append(params.PathWithoutExtension)					, "%s", "Out of memory?");
-	gpk_necall(dbFolderName.append(::gpk::view_const_string{folderNameDigits})	, "%s", "Out of memory?");
-	gpk_necall(::gpk::pathCreate({dbFolderName.begin(), dbFolderName.size()}), "Failed to create database folder: %s.", dbFolderName.begin());
-	info_printf("Output folder: %s.", dbFolderName.begin(), offset);
-	return 0;
-}
-
 // Splits a file.json into file.#blocksize.db/file.##.json parts.
 int										main							(int argc, char ** argv)		{
 	SSplitParams								params							= {};
 	gpk_necall(::loadParams(params, argc, argv), "%s", "");
+
 	::gpk::array_pod<char_t>					dbFolderName					= {};
-	gpk_necall(::setUpFolder(params, dbFolderName), "Failed to creat database folder for database file: '%s'.", params.FileNameSrc.begin());
+	gpk_necall(::bro::tableFolderName(dbFolderName, params.DBName, params.BlockSize), "%s", "??");
+	gpk_necall(::gpk::pathCreate({dbFolderName.begin(), dbFolderName.size()}), "Failed to create database folder: %s.", dbFolderName.begin());
+	info_printf("Output folder: %s.", dbFolderName.begin());
+	if(dbFolderName.size() && dbFolderName[dbFolderName.size()-1] != '/' && dbFolderName[dbFolderName.size()-1] != '\\')
+		gpk_necall(dbFolderName.push_back('/'), "%s", "Out of memory?");
 
 	::gpk::SJSONFile							jsonFileToSplit					= {};
 	gpk_necall(::gpk::jsonFileRead(jsonFileToSplit, params.FileNameSrc), "Failed to load file: %s.", params.FileNameSrc.begin());
@@ -103,19 +95,38 @@ int										main							(int argc, char ** argv)		{
 	gpk_necall(::jsonArraySplit(*jsonFileToSplit.Reader.Tree[0], jsonFileToSplit.Reader.View , params.BlockSize, outputJsons), "%s", "Unknown error!");
 
 	::gpk::array_pod<char_t>					partFileName					= {};
+	::gpk::array_pod<char_t>					pathToWriteTo					= {};
 	::gpk::array_pod<char_t>					deflated						= {};
+	::gpk::array_pod<char_t>					encrypted						= {};
+	::gpk::SAESContext							aes;
 	for(uint32_t iPart = 0; iPart < outputJsons.size(); ++iPart) {
 		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
+		pathToWriteTo							= dbFolderName;
 		gpk_necall(::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart), "%s", "??");
-		info_printf("Saving part file to disk: '%s'.", partFileName.begin());
+		pathToWriteTo.append(partFileName);
+		
+		info_printf("Saving part file to disk: '%s'.", pathToWriteTo.begin());
 		if(false == params.DeflatedOutput) {
-			gpk_necall(::gpk::fileFromMemory({partFileName.begin(), partFileName.size()}, partBytes), "Failed to write part: %u.", iPart);
+			if(0 == params.EncryptionKey.size()) 
+				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, partBytes), "Failed to write part: %u.", iPart);
+			else {
+				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{partBytes.begin(), partBytes.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
+				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
+				encrypted.clear();
+			}
 		}
 		else {
 			gpk_necall(deflated.append((char*)&partBytes.size(), sizeof(uint32_t)), "%s", "Out of memory?");;
 			gpk_necall(::gpk::arrayDeflate(partBytes, deflated), "Failed to deflate part: %u.", iPart);
-			gpk_necall(::gpk::fileFromMemory({partFileName.begin(), partFileName.size()}, deflated), "Failed to write part: %u.", iPart);
-			deflated.clear();
+			if(0 == params.EncryptionKey.size()) {
+				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, deflated), "Failed to write part: %u.", iPart);
+				deflated.clear();
+			} else {
+				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{deflated.begin(), deflated.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
+				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
+				encrypted.clear();
+				deflated.clear();
+			}
 		}
 	}
 	return 0; 

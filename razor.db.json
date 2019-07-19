@@ -1,0 +1,10 @@
+{	"databases"		: 
+	[	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "local"	, "name": "website"		, "bind" : ["website"	, ] }
+	,	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "local"	, "name": "user"		, "bind" : ["referral"	, ] }
+	,	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "local"	, "name": "publisher"	, "bind" : ["publisher"	, ] }
+	,	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "local"	, "name": "company"		, "bind" : ["owner"		, ] }
+	,	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "remote"	, "name": "departments"	, "bind" : ["department", "superdepartment"] }
+	,	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "remote"	, "name": "offices"		, "bind" : ["office"	, ] }
+	,	{ "key" : "MjAwOS0yMDE5IChjKSBUaGUgRHJhZ29u", "deflate" : true, "block" : 5, "type" : "remote"	, "name": "users"		, "bind" : ["manager"	, ], "remote_domain" : "https://rfy56yfcwk.execute-api.us-west-1.amazonaws.com" }
+	]
+}

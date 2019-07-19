@@ -10,6 +10,11 @@ namespace razor
 		::gpk::SJSONFile							Config						= {};
 	};
 
+	//struct SRazorAppV1 {
+	//	::bro::SBigBroV1							BigBro						= {};
+	//	::gpk::SJSONFile							Config						= {};
+	//};
+	//
 	::gpk::error_t								loadConfig					(::razor::SRazorAppV0 & appState, const ::gpk::view_const_string & jsonFileName, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString, const ::gpk::view_array<::gpk::TKeyValConstString> & environViews);
 	::gpk::error_t								processQuery						
 		( ::gpk::array_obj<::bro::TKeyValJSONDBV0>	& databases
