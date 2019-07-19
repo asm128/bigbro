@@ -85,6 +85,8 @@ int										main							(int argc, char ** argv)		{
 	info_printf("Output folder: %s.", dbFolderName.begin());
 	if(dbFolderName.size() && dbFolderName[dbFolderName.size()-1] != '/' && dbFolderName[dbFolderName.size()-1] != '\\')
 		gpk_necall(dbFolderName.push_back('/'), "%s", "Out of memory?");
+	else if(0 == dbFolderName.size())
+		gpk_necall(dbFolderName.append(::gpk::view_const_string{"./"}), "%s", "Out of memory?");
 
 	::gpk::SJSONFile							jsonFileToSplit					= {};
 	gpk_necall(::gpk::jsonFileRead(jsonFileToSplit, params.FileNameSrc), "Failed to load file: %s.", params.FileNameSrc.begin());
@@ -102,8 +104,8 @@ int										main							(int argc, char ** argv)		{
 		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
 		pathToWriteTo							= dbFolderName;
 		gpk_necall(::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart), "%s", "??");
-		pathToWriteTo.append(partFileName);
-		
+		gpk_necall(pathToWriteTo.append(partFileName), "%s", "Out of memory?");
+
 		if(false == params.DeflatedOutput) {
 			if(0 == params.EncryptionKey.size()) {
 				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), partBytes.size());
