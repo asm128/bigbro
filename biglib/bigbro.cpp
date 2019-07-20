@@ -56,7 +56,7 @@
 ::gpk::error_t									bro::configLoad				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, const ::gpk::view_array<const ::gpk::view_const_string> & databasesToLoad, int32_t indexAppNode)	{
 	::gpk::view_const_string							jsonResult					= {};
 	const int32_t										indexObjectDatabases		= (-1 == indexAppNode) 
-		? ::gpk::jsonExpressionResolve("application.bigbro.databases", configReader, 0, jsonResult) 
+		? ::gpk::jsonExpressionResolve("application.blitter.databases", configReader, 0, jsonResult) 
 		: indexAppNode
 		;
 	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
