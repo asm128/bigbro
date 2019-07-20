@@ -10,6 +10,7 @@
 GPK_CGI_JSON_APP_IMPL();																																							\
 																																													\
 ::gpk::error_t									gpk_cgi_generate_output			(::gpk::SCGIRuntimeValues & runtimeValues, ::gpk::array_pod<char_t> & output)	{					\
+	output.append(::gpk::view_const_string{"Content-type: application/json\r\n"});																									\
 	output.append(::gpk::view_const_string{"\r\n"});																																\
 	::razor::SRazorAppV0									app;																													\
 	::gpk::array_obj<::gpk::TKeyValConstString>			environViews;																												\
