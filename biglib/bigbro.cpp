@@ -2,6 +2,8 @@
 
 #include "gpk_json_expression.h"
 #include "gpk_parse.h"
+#include "gpk_storage.h"
+#include "gpk_noise.h"
 
 ::gpk::error_t									bro::queryLoad				(::bro::SQuery& query, const ::gpk::view_array<const ::gpk::TKeyValConstString> keyvals)	{
 	::gpk::keyvalNumeric("offset"	, keyvals, query.Range.Offset	);
@@ -41,11 +43,34 @@
 	return 0;
 }
 
+::gpk::error_t									crcVerifyAndRemove			(::gpk::array_pod<byte_t> & bytes)	{
+	ree_if(bytes.size() < 8, "Invalid input. No CRC can be found in an array of %u bytes.", bytes.size());
+	uint64_t											check						= 0;
+	uint64_t											found						= (bytes.size() >= 8) ? *(uint64_t*)&bytes[bytes.size() - 8] : (uint64_t)-1LL;
+	for(uint32_t iByte = 0; iByte < bytes.size(); ++iByte)
+		check											= ::gpk::noise1DBase(bytes[iByte]);
+	ree_if(check != found, "CRC Check failed: Stored: %llu. Calculated: :llu.", );
+	bytes.resize(bytes.size() - 8);
+	return 0;
+}
+
 ::gpk::error_t									bro::blockFileLoad			(::bro::TKeyValJSONDBV1 & jsonDB, uint32_t block)	{
 	::gpk::array_pod<char_t>							fileName					= {};
 	gpk_necall(::bro::blockFileName(fileName, jsonDB.Key, jsonDB.Val.EncryptionKey, jsonDB.Val.HostType, block), "%s", "Out of memory?");
 	if(0 == jsonDB.Val.EncryptionKey.size()) {
-		gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {fileName.begin(), fileName.size()}), "Failed to load database: %s.", fileName.begin());
+		if(gbit_false(jsonDB.Val.HostType, ::bro::DATABASE_HOST_DEFLATE)) {
+			info_printf("Loading sson file: %s.", fileName.begin());
+			gpk_necall(::gpk::fileToMemory({fileName.begin(), fileName.size()}, jsonDB.Val.Table.Bytes), "Failed to load file: '%s'", fileName.begin());
+			gpk_necall(::crcVerifyAndRemove(jsonDB.Val.Table.Bytes), "CRC check failed: %s.", "??");
+			return ::gpk::jsonParse(jsonDB.Val.Table.Reader, {jsonDB.Val.Table.Bytes.begin(), jsonDB.Val.Table.Bytes.size()});
+		}
+		else {
+			info_printf("Loading json file: %s.", fileName.begin());
+			gpk_necall(::gpk::fileToMemory({fileName.begin(), fileName.size()}, jsonDB.Val.Table.Bytes), "Failed to load file: '%s'", fileName.begin());
+			if(jsonDB.Val.Table.Bytes.size() >= 8)
+				jsonDB.Val.Table.Bytes.resize(jsonDB.Val.Table.Bytes.size() - 8);
+			return ::gpk::jsonParse(jsonDB.Val.Table.Reader, {jsonDB.Val.Table.Bytes.begin(), jsonDB.Val.Table.Bytes.size()});
+		}
 	}
 	else {
 	
@@ -56,7 +81,7 @@
 ::gpk::error_t									bro::configLoad				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, const ::gpk::view_array<const ::gpk::view_const_string> & databasesToLoad, int32_t indexAppNode)	{
 	::gpk::view_const_string							jsonResult					= {};
 	const int32_t										indexObjectDatabases		= (-1 == indexAppNode) 
-		? ::gpk::jsonExpressionResolve("application.blitter.databases", configReader, 0, jsonResult) 
+		? ::gpk::jsonExpressionResolve("application.blitter.database", configReader, 0, jsonResult) 
 		: indexAppNode
 		;
 	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");

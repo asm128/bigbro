@@ -66,6 +66,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blitter", "blitter\blitter.
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "season", "season\season.vcxproj", "{2F5C43F0-AC17-49BF-856A-1746252A6361}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7A6DE552-449A-4B19-8DAA-DFBF7714335D} = {7A6DE552-449A-4B19-8DAA-DFBF7714335D}
+		{830AB681-B788-47D4-9767-BA4E0792F682} = {830AB681-B788-47D4-9767-BA4E0792F682}
+		{858EABF2-8223-456D-944D-23D48C170164} = {858EABF2-8223-456D-944D-23D48C170164}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
