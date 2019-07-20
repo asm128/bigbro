@@ -11,13 +11,13 @@
 			,	"jsondb_cache"	: "../gpk_data/blitter_cache"	
 			},
 			"databases"		  : 
-			[	{ "type" : "local"  , "name": "website"			, "bind" : ["website"		, ] }
-			,	{ "type" : "local"  , "name": "user"			, "bind" : ["referral"		, ] }
-			,	{ "type" : "local"  , "name": "publisher"		, "bind" : ["publisher"		, ] }
-			,	{ "type" : "local"  , "name": "company"			, "bind" : ["owner"			, ] }
-			,	{ "type" : "remote" , "name": "departments"		, "bind" : ["department"	, "superdepartment"] }
-			,	{ "type" : "remote" , "name": "offices"			, "bind" : ["office"		, ] }
-			,	{ "type" : "remote" , "name": "users"			, "bind" : ["manager"		, ], "remote_domain" : "https://rfy56yfcwk.execute-api.us-west-1.amazonaws.com" }
+			[	{ "source" : "local"  , "name": "website"		, "bind" : ["website"		, ] }
+			,	{ "source" : "local"  , "name": "user"			, "bind" : ["referral"		, ] }
+			,	{ "source" : "local"  , "name": "publisher"		, "bind" : ["publisher"		, ] }
+			,	{ "source" : "local"  , "name": "company"		, "bind" : ["owner"			, ] }
+			,	{ "source" : "remote" , "name": "departments"	, "bind" : ["department"	, "superdepartment"] }
+			,	{ "source" : "remote" , "name": "offices"		, "bind" : ["office"		, ] }
+			,	{ "source" : "remote" , "name": "users"			, "bind" : ["manager"		, ], "source_domain" : "https://rfy56yfcwk.execute-api.us-west-1.amazonaws.com" }
 			]
 		}
 	}

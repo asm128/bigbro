@@ -81,7 +81,7 @@
 		::gpk::array_pod<char_t>							dbfilename					= {};
 		gpk_necall(::bro::tableFileName(dbfilename, jsonDB.Val.HostType, jsonDB.Key), "%s", "??");
 		{	// -- Load database modes (remote, deflate)
-			sprintf_s(temp, "[%u].type", iDatabase);
+			sprintf_s(temp, "[%u].source", iDatabase);
 			jsonResult										= {};
 			int32_t												typeFound					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 			gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
