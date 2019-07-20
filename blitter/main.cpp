@@ -10,6 +10,7 @@
 #include "gpk_find.h"
 #include "gpk_deflate.h"
 #include "gpk_aes.h"
+#include "gpk_noise.h"
 
 #include "bigbro.h"
 
@@ -102,18 +103,23 @@ int										main							(int argc, char ** argv)		{
 	::gpk::array_pod<char_t>					encrypted						= {};
 	::gpk::array_pod<char_t>					verify							= {};
 	for(uint32_t iPart = 0; iPart < outputJsons.size(); ++iPart) {
-		const ::gpk::array_pod<char_t>				& partBytes						= outputJsons[iPart];
+		::gpk::array_pod<char_t>					& partBytes						= outputJsons[iPart];
+		uint64_t									crcToStore						= 0;
+		for(uint32_t i=0; i < partBytes.size(); ++i) 
+			crcToStore								+= ::gpk::noise1DBase(partBytes[i]);
+
+		gpk_necall(partBytes.append((char*)&crcToStore, sizeof(uint64_t)), "%s", "Out of memory?");;
+
 		pathToWriteTo							= dbFolderName;
 		gpk_necall(::bro::blockFileName(partFileName, params.DBName, params.EncryptionKey, params.DeflatedOutput ? ::bro::DATABASE_HOST_DEFLATE : ::bro::DATABASE_HOST_LOCAL, iPart), "%s", "??");
 		gpk_necall(pathToWriteTo.append(partFileName), "%s", "Out of memory?");
-
 		if(false == params.DeflatedOutput) {
 			if(0 == params.EncryptionKey.size()) {
 				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), partBytes.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, partBytes), "Failed to write part: %u.", iPart);
 			}
 			else {
-				gpk_necall(::gpk::aesEncode(::gpk::view_const_byte{partBytes.begin(), partBytes.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
+				gpk_necall(::gpk::aesEncode({partBytes.begin(), partBytes.size()}, params.EncryptionKey, ::gpk::AES_LEVEL_256, encrypted), "Failed to encrypt part: %u.", iPart);
 				info_printf("Saving part file to disk: '%s'. Size: %u.", pathToWriteTo.begin(), encrypted.size());
 				gpk_necall(::gpk::fileFromMemory({pathToWriteTo.begin(), pathToWriteTo.size()}, encrypted), "Failed to write part: %u.", iPart);
 				verify.clear();
