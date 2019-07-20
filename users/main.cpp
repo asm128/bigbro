@@ -1,3 +1,3 @@
-#include "razor_endpoint.h"
+#include "blitter_endpoint.h"
 
 RAZOR_READONLY_ENDPOINT_IMPL("user", "razor.json");
