@@ -17,7 +17,7 @@
 	char												temp[64]					= {};
 	const ::gpk::view_const_string						extension					= encryptionKey.size() 
 		? ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "czon" : "cson")
-		: ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "json")
+		: ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "sson")
 		;
 	sprintf_s(temp, ".%u.%s", block, extension.begin());
 	gpk_necall(filename.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");

@@ -126,7 +126,7 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 					newDB.Val.BlockSize						= refDB.Val.BlockSize	;
 					newDB.Val.HostType						= refDB.Val.HostType	;
 					newDB.Val.Range.Offset					= iBlockCurrent * newDB.Val.BlockSize;
-					sprintf_s(strFormat, "%%.%us.%llu.json", newDB.Key.size(), iBlockCurrent);
+					sprintf_s(strFormat, "%%.%us.%llu.sson", newDB.Key.size(), iBlockCurrent);
 					sprintf_s(filename, strFormat, newDB.Key.begin());
 					::gpk::jsonFileRead(newDB.Val.Table, filename);
 				}
