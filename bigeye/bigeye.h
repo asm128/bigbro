@@ -1,5 +1,5 @@
-#include "gpk_json.h"
-#include "gpk_udp_client.h"
+#include "llc_json.h"
+#include "llc_udp_client.h"
 #include "bro_packet.h"
 
 #ifndef BIGEYE_H_641651368135135
@@ -8,11 +8,11 @@
 namespace bro
 {
 	struct SBigEye {
-		::gpk::SUDPClient						Client						= {};
-		::gpk::SJSONFile						Config						= {};
+		::llc::SUDPClient						Client						= {};
+		::llc::SJSONFile						Config						= {};
 	};
 
-	::gpk::error_t							bigEyeLoadConfig			(::bro::SBigEye & app, const ::gpk::view_const_string & fileNameJSONConfig);
+	::llc::error_t							bigEyeLoadConfig			(::bro::SBigEye & app, const ::llc::view_const_string & fileNameJSONConfig);
 
 } // namespace
 

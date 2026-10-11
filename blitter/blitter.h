@@ -7,20 +7,20 @@ namespace razor
 {
 	struct SRazorAppV0 {
 		::bro::SBigBroV0							BigBro						= {};
-		::gpk::SJSONFile							Config						= {};
+		::llc::SJSONFile							Config						= {};
 	};
 
 	//struct SRazorAppV1 {
 	//	::bro::SBigBroV1							BigBro						= {};
-	//	::gpk::SJSONFile							Config						= {};
+	//	::llc::SJSONFile							Config						= {};
 	//};
 	//
-	::gpk::error_t								loadConfig					(::razor::SRazorAppV0 & appState, const ::gpk::view_const_string & jsonFileName, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString, const ::gpk::view_array<::gpk::TKeyValConstString> & environViews);
-	::gpk::error_t								processQuery						
-		( ::gpk::array_obj<::bro::TKeyValJSONDBV0>	& databases
+	::llc::error_t								loadConfig					(::razor::SRazorAppV0 & appState, const ::llc::view_const_string & jsonFileName, const ::llc::view_array<::llc::TKeyValConstString> & queryString, const ::llc::view_array<::llc::TKeyValConstString> & environViews);
+	::llc::error_t								processQuery						
+		( ::llc::array_obj<::bro::TKeyValJSONDBV0>	& databases
 		, const ::bro::SQuery						& query
-		, const ::gpk::view_const_string			& databaseName
-		, ::gpk::array_pod<char_t>					& output
+		, const ::llc::view_const_string			& databaseName
+		, ::llc::array_pod<char_t>					& output
 		);
 }
 

@@ -1,75 +1,75 @@
 #include "bigbro.h"
 
-#include "gpk_json_expression.h"
-#include "gpk_parse.h"
-#include "gpk_storage.h"
-#include "gpk_noise.h"
+#include "llc_json_expression.h"
+#include "llc_parse.h"
+#include "llc_storage.h"
+#include "llc_noise.h"
 
-::gpk::error_t									bro::queryLoad				(::bro::SQuery& query, const ::gpk::view_array<const ::gpk::TKeyValConstString> keyvals)	{
-	::gpk::keyvalNumeric("offset"	, keyvals, query.Range.Offset	);
-	::gpk::keyvalNumeric("limit"	, keyvals, query.Range.Count	);
-	::gpk::error_t										indexExpand					= ::gpk::find("expand", keyvals);
+::llc::error_t									bro::queryLoad				(::bro::SQuery& query, const ::llc::view_array<const ::llc::TKeyValConstString> keyvals)	{
+	::llc::keyvalNumeric("offset"	, keyvals, query.Range.Offset	);
+	::llc::keyvalNumeric("limit"	, keyvals, query.Range.Count	);
+	::llc::error_t										indexExpand					= ::llc::find("expand", keyvals);
 	if(-1 != indexExpand) 
 		query.Expand									= keyvals[indexExpand].Val;
 	return 0;
 }
 
-::gpk::error_t									bro::blockFileName			(::gpk::array_pod<char_t> & filename, const ::gpk::view_const_string & dbName, const ::gpk::view_const_string & encryptionKey, const ::bro::DATABASE_HOST hostType, const uint32_t block) {
+::llc::error_t									bro::blockFileName			(::llc::array_pod<char_t> & filename, const ::llc::view_const_string & dbName, const ::llc::view_const_string & encryptionKey, const ::bro::DATABASE_HOST hostType, const uint32_t block) {
 	filename										= dbName;
 	char												temp[64]					= {};
-	const ::gpk::view_const_string						extension					= encryptionKey.size() 
+	const ::llc::view_const_string						extension					= encryptionKey.size() 
 		? ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "czon" : "cson")
 		: ((::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "sson")
 		;
 	sprintf_s(temp, ".%u.%s", block, extension.begin());
-	gpk_necall(filename.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
+	llc_necall(filename.append(::llc::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
 }
 
-::gpk::error_t									bro::tableFolderName			(::gpk::array_pod<char_t> & foldername, const ::gpk::view_const_string & dbName, const uint32_t block) {
+::llc::error_t									bro::tableFolderName			(::llc::array_pod<char_t> & foldername, const ::llc::view_const_string & dbName, const uint32_t block) {
 	foldername										= dbName;
 	char												temp[64]					= {};
 	sprintf_s(temp, ".%u.db", block);
-	gpk_necall(foldername.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
+	llc_necall(foldername.append(::llc::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
 }
 
-::gpk::error_t									bro::tableFileName			(::gpk::array_pod<char_t> & filename, const ::bro::DATABASE_HOST & hostType, const ::gpk::view_const_string & jsonDBKey) {
+::llc::error_t									bro::tableFileName			(::llc::array_pod<char_t> & filename, const ::bro::DATABASE_HOST & hostType, const ::llc::view_const_string & jsonDBKey) {
 	filename										= jsonDBKey;
 	char												temp[64]					= {};
-	const ::gpk::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "json";
+	const ::llc::view_const_string						extension					= (::bro::DATABASE_HOST_DEFLATE & hostType) ? "zson" : "json";
 	sprintf_s(temp, ".%s", extension.begin());
-	gpk_necall(filename.append(::gpk::view_const_string{temp}), "%s", "Out of memory?");
+	llc_necall(filename.append(::llc::view_const_string{temp}), "%s", "Out of memory?");
 	return 0;
 }
 
-::gpk::error_t									crcVerifyAndRemove			(::gpk::array_pod<byte_t> & bytes)	{
+::llc::error_t									crcVerifyAndRemove			(::llc::array_pod<byte_t> & bytes)	{
 	ree_if(bytes.size() < 8, "Invalid input. No CRC can be found in an array of %u bytes.", bytes.size());
 	uint64_t											check						= 0;
 	uint64_t											found						= (bytes.size() >= 8) ? *(uint64_t*)&bytes[bytes.size() - 8] : (uint64_t)-1LL;
 	for(uint32_t iByte = 0; iByte < bytes.size(); ++iByte)
-		check											= ::gpk::noise1DBase(bytes[iByte]);
+		check											= ::llc::noise1DBase(bytes[iByte]);
 	ree_if(check != found, "CRC Check failed: Stored: %llu. Calculated: :llu.", );
 	bytes.resize(bytes.size() - 8);
 	return 0;
 }
 
-::gpk::error_t									bro::blockFileLoad			(::bro::TKeyValJSONDBV1 & jsonDB, uint32_t block)	{
-	::gpk::array_pod<char_t>							fileName					= {};
-	gpk_necall(::bro::blockFileName(fileName, jsonDB.Key, jsonDB.Val.EncryptionKey, jsonDB.Val.HostType, block), "%s", "Out of memory?");
+::llc::error_t									bro::blockFileLoad			(::bro::TKeyValJSONDBV1 & jsonDB, uint32_t block)	{
+	::llc::array_pod<char_t>							fileName					= {};
+	llc_necall(::bro::blockFileName(fileName, jsonDB.Key, jsonDB.Val.EncryptionKey, jsonDB.Val.HostType, block), "%s", "Out of memory?");
 	if(0 == jsonDB.Val.EncryptionKey.size()) {
 		if(gbit_false(jsonDB.Val.HostType, ::bro::DATABASE_HOST_DEFLATE)) {
 			info_printf("Loading sson file: %s.", fileName.begin());
-			gpk_necall(::gpk::fileToMemory({fileName.begin(), fileName.size()}, jsonDB.Val.Table.Bytes), "Failed to load file: '%s'", fileName.begin());
-			gpk_necall(::crcVerifyAndRemove(jsonDB.Val.Table.Bytes), "CRC check failed: %s.", "??");
-			return ::gpk::jsonParse(jsonDB.Val.Table.Reader, {jsonDB.Val.Table.Bytes.begin(), jsonDB.Val.Table.Bytes.size()});
+			llc_necall(::llc::fileToMemory({fileName.begin(), fileName.size()}, jsonDB.Val.Table.Bytes), "Failed to load file: '%s'", fileName.begin());
+			llc_necall(::crcVerifyAndRemove(jsonDB.Val.Table.Bytes), "CRC check failed: %s.", "??");
+			return ::llc::jsonParse(jsonDB.Val.Table.Reader, {jsonDB.Val.Table.Bytes.begin(), jsonDB.Val.Table.Bytes.size()});
 		}
 		else {
 			info_printf("Loading json file: %s.", fileName.begin());
-			gpk_necall(::gpk::fileToMemory({fileName.begin(), fileName.size()}, jsonDB.Val.Table.Bytes), "Failed to load file: '%s'", fileName.begin());
+			llc_necall(::llc::fileToMemory({fileName.begin(), fileName.size()}, jsonDB.Val.Table.Bytes), "Failed to load file: '%s'", fileName.begin());
 			if(jsonDB.Val.Table.Bytes.size() >= 8)
 				jsonDB.Val.Table.Bytes.resize(jsonDB.Val.Table.Bytes.size() - 8);
-			return ::gpk::jsonParse(jsonDB.Val.Table.Reader, {jsonDB.Val.Table.Bytes.begin(), jsonDB.Val.Table.Bytes.size()});
+			return ::llc::jsonParse(jsonDB.Val.Table.Reader, {jsonDB.Val.Table.Bytes.begin(), jsonDB.Val.Table.Bytes.size()});
 		}
 	}
 	else {
@@ -78,56 +78,56 @@
 	return 0;
 }
 
-::gpk::error_t									bro::configLoad				(::bro::SBigBroV0 & appState, const ::gpk::SJSONReader & configReader, const ::gpk::view_array<const ::gpk::view_const_string> & databasesToLoad, int32_t indexAppNode)	{
-	::gpk::view_const_string							jsonResult					= {};
+::llc::error_t									bro::configLoad				(::bro::SBigBroV0 & appState, const ::llc::SJSONReader & configReader, const ::llc::view_array<const ::llc::view_const_string> & databasesToLoad, int32_t indexAppNode)	{
+	::llc::view_const_string							jsonResult					= {};
 	const int32_t										indexObjectDatabases		= (-1 == indexAppNode) 
-		? ::gpk::jsonExpressionResolve("application.blitter.database", configReader, 0, jsonResult) 
+		? ::llc::jsonExpressionResolve("application.blitter.database", configReader, 0, jsonResult) 
 		: indexAppNode
 		;
-	gpk_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
+	llc_necall(indexObjectDatabases, "%s", "Failed to get database config from JSON file.");
 	jsonResult										= "";
-	const ::gpk::error_t								databaseArraySize			= ::gpk::jsonArraySize(*configReader[indexObjectDatabases]);
-	gpk_necall(databaseArraySize, "%s", "Failed to get database count from config file.");
+	const ::llc::error_t								databaseArraySize			= ::llc::jsonArraySize(*configReader[indexObjectDatabases]);
+	llc_necall(databaseArraySize, "%s", "Failed to get database count from config file.");
 	char												temp[64]					= {};
-	gpk_necall(appState.Databases.resize(databaseArraySize), "%s", "Out of memory?");
+	llc_necall(appState.Databases.resize(databaseArraySize), "%s", "Out of memory?");
 	for(uint32_t iDatabase = 0, countDatabases = (uint32_t)databaseArraySize; iDatabase < countDatabases; ++iDatabase) {
 		sprintf_s(temp, "[%u].name", iDatabase);
-		gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
+		llc_necall(::llc::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
 		::bro::TKeyValJSONDBV0								& jsonDB					= appState.Databases[iDatabase];
 		jsonDB.Key										= jsonResult;
 		{	// -- Load database block size
 			sprintf_s(temp, "[%u].block", iDatabase);
-			int32_t												indexBlockNode				= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			int32_t												indexBlockNode				= ::llc::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 			gwarn_if(errored(indexBlockNode), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
-				::gpk::parseIntegerDecimal(jsonResult, &(jsonDB.Val.BlockSize = 0));
+				::llc::parseIntegerDecimal(jsonResult, &(jsonDB.Val.BlockSize = 0));
 			}
 		}
-		::gpk::array_pod<char_t>							dbfilename					= {};
-		gpk_necall(::bro::tableFileName(dbfilename, jsonDB.Val.HostType, jsonDB.Key), "%s", "??");
+		::llc::array_pod<char_t>							dbfilename					= {};
+		llc_necall(::bro::tableFileName(dbfilename, jsonDB.Val.HostType, jsonDB.Key), "%s", "??");
 		{	// -- Load database modes (remote, deflate)
 			sprintf_s(temp, "[%u].source", iDatabase);
 			jsonResult										= {};
-			int32_t												typeFound					= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			int32_t												typeFound					= ::llc::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 			gwarn_if(errored(typeFound), "Failed to load database type for database: %s. Defaulting to local.", dbfilename.begin());
-			jsonDB.Val.HostType								= (::gpk::view_const_string{"local"} == jsonResult || errored(typeFound)) ? ::bro::DATABASE_HOST_LOCAL : ::bro::DATABASE_HOST_REMOTE;
+			jsonDB.Val.HostType								= (::llc::view_const_string{"local"} == jsonResult || errored(typeFound)) ? ::bro::DATABASE_HOST_LOCAL : ::bro::DATABASE_HOST_REMOTE;
 			sprintf_s(temp, "[%u].deflate", iDatabase);
 			jsonResult										= {};
-			typeFound										= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			typeFound										= ::llc::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 			gwarn_if(errored(typeFound), "Failed to load database compression for database: %s. Defaulting to uncompressed.", dbfilename.begin());
-			if(::gpk::view_const_string{"true"} == jsonResult)
+			if(::llc::view_const_string{"true"} == jsonResult)
 				jsonDB.Val.HostType								|= ::bro::DATABASE_HOST_DEFLATE;
 		}
 		{	// -- Load field bindings
 			sprintf_s(temp, "[%u].bind", iDatabase);
-			::gpk::error_t										indexBindArray				= ::gpk::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
+			::llc::error_t										indexBindArray				= ::llc::jsonExpressionResolve(temp, configReader, indexObjectDatabases, jsonResult);
 			w_if(errored(indexBindArray), "No bindings found for database file: %s.", dbfilename.begin())
 			else {
-				::gpk::error_t										sizeBindArray				= ::gpk::jsonArraySize(*configReader[indexBindArray]);
-				gpk_necall(jsonDB.Val.Bindings.resize(sizeBindArray), "%s", "Out of memory?");;
+				::llc::error_t										sizeBindArray				= ::llc::jsonArraySize(*configReader[indexBindArray]);
+				llc_necall(jsonDB.Val.Bindings.resize(sizeBindArray), "%s", "Out of memory?");;
 				for(uint32_t iBind = 0; iBind < jsonDB.Val.Bindings.size(); ++iBind) {
 					sprintf_s(temp, "[%u]", iBind);
-					gpk_necall(::gpk::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
+					llc_necall(::llc::jsonExpressionResolve(temp, configReader, indexBindArray, jsonResult), "Failed to load config from json! Last contents found: %s.", jsonResult.begin());
 					jsonDB.Val.Bindings[iBind]						= jsonResult;
 				}
 			}
@@ -138,11 +138,11 @@
 			continue;	// block databases get loaded on-demand
 		// -- Load json database file.
 		if(0 == databasesToLoad.size())
-			gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+			llc_necall(::llc::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
 		else {
 			for(uint32_t iDB = 0; iDB = databasesToLoad.size(); ++iDB) 
 				if(databasesToLoad[iDB] == jsonDB.Key) {
-					gpk_necall(::gpk::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
+					llc_necall(::llc::jsonFileRead(jsonDB.Val.Table, {dbfilename.begin(), dbfilename.size()}), "Failed to load database: %s.", dbfilename.begin());
 					break;
 				}
 		}

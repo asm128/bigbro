@@ -2,35 +2,35 @@
 
 #include "bro_packet.h"
 
-#include "gpk_tcpip.h"
-#include "gpk_find.h"
-#include "gpk_process.h"
+#include "llc_tcpip.h"
+#include "llc_find.h"
+#include "llc_process.h"
 
-#include "gpk_parse.h"
-#include "gpk_cgi.h"
-#include "gpk_stdstring.h"
+#include "llc_parse.h"
+#include "llc_cgi.h"
+#include "llc_stdstring.h"
 
 
-static	::gpk::error_t										loadServerConfig			(::bba::SApplication & app)						{
-	::gpk::SFramework												& framework					= app.Framework;
+static	::llc::error_t										loadServerConfig			(::bba::SApplication & app)						{
+	::llc::SFramework												& framework					= app.Framework;
 	uint64_t														port						= 9998;
 	uint64_t														adapter						= 0;
 	{ // load port from config file
-		::gpk::view_const_string										jsonResult					= {};
-		const ::gpk::SJSONReader										& jsonReader				= framework.JSONConfig.Reader;
-		const int32_t													indexObjectApp				= ::gpk::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonResult);
+		::llc::view_const_string										jsonResult					= {};
+		const ::llc::SJSONReader										& jsonReader				= framework.JSONConfig.Reader;
+		const int32_t													indexObjectApp				= ::llc::jsonExpressionResolve("application.bigbro", jsonReader, 0, jsonResult);
 		gwarn_if(errored(indexObjectApp), "Failed to find application node (%s) in json configuration file: '%s'", "application.bigbro", framework.FileNameJSONConfig.begin())
 		else {
 			jsonResult													= "";
-			gwarn_if(errored(::gpk::jsonExpressionResolve("listen_port", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
+			gwarn_if(errored(::llc::jsonExpressionResolve("listen_port", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
-				::gpk::parseIntegerDecimal(jsonResult, &port);
+				::llc::parseIntegerDecimal(jsonResult, &port);
 				info_printf("Port to listen on: %u.", (uint32_t)port);
 			}
 			jsonResult													= "";
-			gwarn_if(errored(::gpk::jsonExpressionResolve("adapter", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
+			gwarn_if(errored(::llc::jsonExpressionResolve("adapter", jsonReader, indexObjectApp, jsonResult)), "Failed to load config from json! Last contents found: %s.", jsonResult.begin()) 
 			else {
-				::gpk::parseIntegerDecimal(jsonResult, &adapter);
+				::llc::parseIntegerDecimal(jsonResult, &adapter);
 				info_printf("Adapter: %u.", (uint32_t)adapter);
 			}
 		}
@@ -40,45 +40,45 @@ static	::gpk::error_t										loadServerConfig			(::bba::SApplication & app)			
 	return 0;
 }
 
-::gpk::error_t												bba::loadConfig					(::bba::SApplication & app)						{
-	gpk_necall(::loadServerConfig(app), "%s", "Error loading networking configuration.");
-	gpk_necall(::bro::configLoad(app.BigBro, app.Framework.JSONConfig.Reader), "%s", "Failed to load BigBro configuration.");
+::llc::error_t												bba::loadConfig					(::bba::SApplication & app)						{
+	llc_necall(::loadServerConfig(app), "%s", "Error loading networking configuration.");
+	llc_necall(::bro::configLoad(app.BigBro, app.Framework.JSONConfig.Reader), "%s", "Failed to load BigBro configuration.");
 	return 0;
 }
 
 
-static	::gpk::error_t										processPayload				(::bro::SBigBroV0 & appState, const ::gpk::view_const_byte & payload, ::gpk::array_pod<char_t> & partialResult, ::gpk::array_pod<char_t> & bytesResponse)						{
+static	::llc::error_t										processPayload				(::bro::SBigBroV0 & appState, const ::llc::view_const_byte & payload, ::llc::array_pod<char_t> & partialResult, ::llc::array_pod<char_t> & bytesResponse)						{
 	::bro::SRequestPacket											packetReceived;
 	::bro::requestRead(packetReceived, payload);
 	{	// --- Retrieve query from request.
-		::gpk::array_obj<::gpk::TKeyValConstString>						qsKeyVals;
-		::gpk::array_obj<::gpk::view_const_string>						queryStringElements			= {};
-		::gpk::querystring_split({packetReceived.QueryString.begin(), packetReceived.QueryString.size()}, queryStringElements);
+		::llc::array_obj<::llc::TKeyValConstString>						qsKeyVals;
+		::llc::array_obj<::llc::view_const_string>						queryStringElements			= {};
+		::llc::querystring_split({packetReceived.QueryString.begin(), packetReceived.QueryString.size()}, queryStringElements);
 		qsKeyVals.resize(queryStringElements.size());
 		for(uint32_t iKeyVal = 0; iKeyVal < qsKeyVals.size(); ++iKeyVal) {
-			::gpk::TKeyValConstString										& keyValDst					= qsKeyVals[iKeyVal];
-			::gpk::keyval_split(queryStringElements[iKeyVal], keyValDst);
+			::llc::TKeyValConstString										& keyValDst					= qsKeyVals[iKeyVal];
+			::llc::keyval_split(queryStringElements[iKeyVal], keyValDst);
 		}
 		::bro::queryLoad(appState.Query, qsKeyVals);
 	}
 	// --- Generate response
-	::gpk::view_const_string										dbName						= (packetReceived.Path.size() > 1) ? ::gpk::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::gpk::view_const_string{};;
+	::llc::view_const_string										dbName						= (packetReceived.Path.size() > 1) ? ::llc::view_const_string{&packetReceived.Path[1], packetReceived.Path.size() - 1} : ::llc::view_const_string{};;
 	uint64_t														detail						= (uint64_t)-1LL;
 	{	// --- Retrieve detail part 
-		::gpk::view_const_string										strDetail					= {};
-		const ::gpk::error_t											indexOfLastBar				= ::gpk::rfind('/', dbName);
+		::llc::view_const_string										strDetail					= {};
+		const ::llc::error_t											indexOfLastBar				= ::llc::rfind('/', dbName);
 		const uint32_t													startOfDetail				= (uint32_t)(indexOfLastBar + 1);
 		if(indexOfLastBar > 0 && startOfDetail < dbName.size()) {
 			strDetail													= {&dbName[startOfDetail], dbName.size() - startOfDetail};
 			dbName														= {dbName.begin(), (uint32_t)indexOfLastBar};
 			if(strDetail.size()) {
-				::gpk::stoull(strDetail, &detail);
+				::llc::stoull(strDetail, &detail);
 				appState.Query.Detail										= (int64_t)detail;
 			}
 		}
 	}
 	if(0 != dbName.size()) {
-		::gpk::array_obj<::bro::TCacheMissRecord>						cacheMisses;
+		::llc::array_obj<::bro::TCacheMissRecord>						cacheMisses;
 		::bro::generate_output_for_db(appState.Databases, appState.Query, dbName, partialResult, cacheMisses);
 		if(0 == cacheMisses.size()) {
 			bytesResponse.append(partialResult);
@@ -87,7 +87,7 @@ static	::gpk::error_t										processPayload				(::bro::SBigBroV0 & appState, c
 		else {
 			char format[256];
 			bytesResponse.clear();
-			::gpk::array_obj<::bro::TCacheMissRecord>		cacheMissesFolded;
+			::llc::array_obj<::bro::TCacheMissRecord>		cacheMissesFolded;
 			for(uint32_t iAliasMiss = 0; iAliasMiss < cacheMisses.size(); ++iAliasMiss) {
 				const ::bro::TCacheMissRecord								& miss			= cacheMisses[iAliasMiss];
 				cacheMissesFolded.push_back({miss.Key, {}});
@@ -120,16 +120,16 @@ static	::gpk::error_t										processPayload				(::bro::SBigBroV0 & appState, c
 }
 
 // Pick up messages for later processing in order to clear receive queues to avoid the connection's extra work.
-static	::gpk::error_t										pickUpQueueReceived			(::bba::SServerAsync & serverAsync)						{
-	::gpk::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
-	::gpk::array_obj<::gpk::array_pod<::bba::CONNECTION_STATE>>		& requestStates				= serverAsync.RequestStates;
+static	::llc::error_t										pickUpQueueReceived			(::bba::SServerAsync & serverAsync)						{
+	::llc::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
+	::llc::array_obj<::llc::array_pod<::bba::CONNECTION_STATE>>		& requestStates				= serverAsync.RequestStates;
 	{
-		::gpk::mutex_guard												lock						(serverAsync.UDPServer.Mutex);
+		::llc::mutex_guard												lock						(serverAsync.UDPServer.Mutex);
 		receivedPerClient	.resize(serverAsync.UDPServer.Clients.size());
 		requestStates		.resize(serverAsync.UDPServer.Clients.size(), ::bba::CONNECTION_STATE_IDLE);
 		for(uint32_t iClient = 0; iClient < serverAsync.UDPServer.Clients.size(); ++iClient) {
-			::gpk::ptr_obj<::gpk::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
-			::gpk::mutex_guard												lockRecv					(conn->Queue.MutexReceive);
+			::llc::ptr_obj<::llc::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
+			::llc::mutex_guard												lockRecv					(conn->Queue.MutexReceive);
 			receivedPerClient[iClient]									= conn->Queue.Received;
 			conn->Queue.Received.clear();
 		}
@@ -138,29 +138,29 @@ static	::gpk::error_t										pickUpQueueReceived			(::bba::SServerAsync & serv
 }
 
 // Send generated responses 
-static	::gpk::error_t										sendGeneratedResponses		(::bba::SServerAsync & serverAsync)						{
-	::gpk::array_obj<::bba::TUDPResponseQueue>						& clientResponses			= serverAsync.ClientResponses;
-	::gpk::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
+static	::llc::error_t										sendGeneratedResponses		(::bba::SServerAsync & serverAsync)						{
+	::llc::array_obj<::bba::TUDPResponseQueue>						& clientResponses			= serverAsync.ClientResponses;
+	::llc::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
 	for(uint32_t iClient = 0; iClient < clientResponses.size(); ++iClient) {
 		for(uint32_t iMessage = 0; iMessage < clientResponses[iClient].size(); ++iMessage) { // Send generated responses 
-			const ::gpk::view_const_byte									message						= clientResponses[iClient][iMessage];
+			const ::llc::view_const_byte									message						= clientResponses[iClient][iMessage];
 			if(0 == message.size()) 
 				continue;
-			::gpk::mutex_guard												lock						(serverAsync.UDPServer.Mutex);
-			::gpk::ptr_obj<::gpk::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
-			::gpk::connectionPushData(*conn, conn->Queue, message, true, true, 10);
+			::llc::mutex_guard												lock						(serverAsync.UDPServer.Mutex);
+			::llc::ptr_obj<::llc::SUDPConnection>							conn						= serverAsync.UDPServer.Clients[iClient];
+			::llc::connectionPushData(*conn, conn->Queue, message, true, true, 10);
 			receivedPerClient[iClient][iMessage]						= {};	// Clear received message.
 		}
 	}
 	return 0;
 }
 
-::gpk::error_t												bba::updateCRUDServer		(::bro::SBigBroV0 & appState, ::bba::SServerAsync & serverAsync)						{
+::llc::error_t												bba::updateCRUDServer		(::bro::SBigBroV0 & appState, ::bba::SServerAsync & serverAsync)						{
 	::pickUpQueueReceived(serverAsync);
 
-	::gpk::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
-	::gpk::array_obj<::bba::TUDPResponseQueue>						& clientResponses			= serverAsync.ClientResponses;
-	::gpk::array_obj<::bba::TUDPResponseQueue>						& partialResults			= serverAsync.PartialResults;
+	::llc::array_obj<::bba::TUDPReceiveQueue>						& receivedPerClient			= serverAsync.ReceivedPerClient;
+	::llc::array_obj<::bba::TUDPResponseQueue>						& clientResponses			= serverAsync.ClientResponses;
+	::llc::array_obj<::bba::TUDPResponseQueue>						& partialResults			= serverAsync.PartialResults;
 	clientResponses		.resize(receivedPerClient.size());	// we need one output queue for each input queue
 	partialResults		.resize(receivedPerClient.size());	// we need one output queue for each input queue
 	for(uint32_t iClient = 0; iClient < receivedPerClient.size(); ++iClient) {	// Process received packets.
@@ -169,13 +169,13 @@ static	::gpk::error_t										sendGeneratedResponses		(::bba::SServerAsync & se
 		partialResults	[iClient].resize(clientReceived.size());		// we need one output message for each received message
 		for(uint32_t iMessage = 0; iMessage < clientReceived.size(); ++iMessage) {
 			info_printf("Client %i received: %s.", iClient, clientReceived[iMessage]->Payload.begin());	
-			::gpk::view_const_byte											payload						= clientReceived[iMessage]->Payload;
-			::gpk::array_pod<byte_t>										& bytesResponse				= clientResponses[iClient][iMessage];
-			::gpk::array_pod<byte_t>										& partialResult				= partialResults[iClient][iMessage];
-			bytesResponse												= ::gpk::view_const_string{"\r\n"};
+			::llc::view_const_byte											payload						= clientReceived[iMessage]->Payload;
+			::llc::array_pod<byte_t>										& bytesResponse				= clientResponses[iClient][iMessage];
+			::llc::array_pod<byte_t>										& partialResult				= partialResults[iClient][iMessage];
+			bytesResponse												= ::llc::view_const_string{"\r\n"};
 			::processPayload(appState, payload, partialResult, bytesResponse);
 			if(2 == bytesResponse.size() && 0 == partialResult.size())
-				bytesResponse.append(::gpk::view_const_string{"{}"});
+				bytesResponse.append(::llc::view_const_string{"{}"});
 		}
 	}
 

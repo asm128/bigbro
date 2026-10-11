@@ -2,48 +2,48 @@
 
 #include "bro_packet.h"
 
-#include "gpk_cgi.h"
-#include "gpk_cgi_module.h"
-#include "gpk_string_helper.h"
-#include "gpk_process.h"
-#include "gpk_json_expression.h"
-#include "gpk_parse.h"
-#include "gpk_storage.h"
+#include "llc_cgi.h"
+#include "llc_cgi_module.h"
+#include "llc_string_helper.h"
+#include "llc_process.h"
+#include "llc_json_expression.h"
+#include "llc_parse.h"
+#include "llc_storage.h"
 
 #include <string>		// for ::std::stoi()
 
-static	::gpk::error_t								cgiBootstrap					(const ::gpk::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::gpk::array_pod<char> & output)								{
-	::gpk::array_obj<::gpk::TKeyValConstString>				environViews;
-	::gpk::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
-	::gpk::writeCGIEnvironToFile(environViews);
+static	::llc::error_t								cgiBootstrap					(const ::llc::SCGIRuntimeValues & runtimeValues, ::bro::SBigEye & appState, ::llc::array_pod<char> & output)								{
+	::llc::array_obj<::llc::TKeyValConstString>				environViews;
+	::llc::environmentBlockViews(runtimeValues.EntryPointArgs.EnvironmentBlock, environViews);
+	::llc::writeCGIEnvironToFile(environViews);
 
-	::gpk::view_const_string								allowedMethods	[]				= {"POST", "GET"};
-	if(0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", allowedMethods)) {
-		output.append(::gpk::view_const_string{"{ \"status\" : 403, \"description\" :\"forbidden\" }\r\n"});
+	::llc::view_const_string								allowedMethods	[]				= {"POST", "GET"};
+	if(0 == ::llc::keyValVerify(environViews, "REQUEST_METHOD", allowedMethods)) {
+		output.append(::llc::view_const_string{"{ \"status\" : 403, \"description\" :\"forbidden\" }\r\n"});
 		return 1;
 	}	
-	::gpk::array_pod<byte_t>								bytesToSend;
+	::llc::array_pod<byte_t>								bytesToSend;
 	::bro::SRequestPacket									packetToSend;
 	{
-		packetToSend.Method									= 0 == ::gpk::keyValVerify(environViews, "REQUEST_METHOD", "GET") ? ::gpk::HTTP_METHOD_POST : ::gpk::HTTP_METHOD_GET;
-		::gpk::find("PATH_INFO"		, environViews, packetToSend.Path);
-		::gpk::find("QUERY_STRING"	, environViews, packetToSend.QueryString);
+		packetToSend.Method									= 0 == ::llc::keyValVerify(environViews, "REQUEST_METHOD", "GET") ? ::llc::HTTP_METHOD_POST : ::llc::HTTP_METHOD_GET;
+		::llc::find("PATH_INFO"		, environViews, packetToSend.Path);
+		::llc::find("QUERY_STRING"	, environViews, packetToSend.QueryString);
 		packetToSend.ContentBody							= runtimeValues.Content.Body;
 	}
 	::bro::requestWrite(packetToSend, bytesToSend);
 
 	{	// Connect the client to the service.
-		::gpk::SUDPClient										& udpClient						= appState.Client;
-		gpk_necall(::gpk::clientConnect(udpClient), "%s", "error");
-		::gpk::array_pod<char_t>								responseRemote;
+		::llc::SUDPClient										& udpClient						= appState.Client;
+		llc_necall(::llc::clientConnect(udpClient), "%s", "error");
+		::llc::array_pod<char_t>								responseRemote;
 		{	// Send the request data to the connected service.
-			ree_if(udpClient.State != ::gpk::UDP_CONNECTION_STATE_IDLE, "%s", "Failed to connect to server.");
-			gpk_necall(::gpk::connectionPushData(udpClient, udpClient.Queue, bytesToSend, true, true, 10), "%s", "error");	// Enqueue the packet
-			while(udpClient.State != ::gpk::UDP_CONNECTION_STATE_DISCONNECTED) {	// Loop until we ge the response or the client disconnects
-				gpk_necall(::gpk::clientUpdate(udpClient), "%s", "error");	
-				::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>	received;
+			ree_if(udpClient.State != ::llc::UDP_CONNECTION_STATE_IDLE, "%s", "Failed to connect to server.");
+			llc_necall(::llc::connectionPushData(udpClient, udpClient.Queue, bytesToSend, true, true, 10), "%s", "error");	// Enqueue the packet
+			while(udpClient.State != ::llc::UDP_CONNECTION_STATE_DISCONNECTED) {	// Loop until we ge the response or the client disconnects
+				llc_necall(::llc::clientUpdate(udpClient), "%s", "error");	
+				::llc::array_obj<::llc::ptr_obj<::llc::SUDPConnectionMessage>>	received;
 				{	// pick up messages for later processing
-					::gpk::mutex_guard										lockRecv						(udpClient.Queue.MutexReceive);
+					::llc::mutex_guard										lockRecv						(udpClient.Queue.MutexReceive);
 					received											= udpClient.Queue.Received;
 					udpClient.Queue.Received.clear();
 				}
@@ -51,11 +51,11 @@ static	::gpk::error_t								cgiBootstrap					(const ::gpk::SCGIRuntimeValues & 
 					responseRemote										= received[0]->Payload;
 					break;
 				}
-				::gpk::sleep(10);
+				::llc::sleep(10);
 			}
 		}
 		//info_printf("Remote CGI answer: %s.", responseRemote.begin());
-		gpk_necall(::gpk::clientDisconnect(udpClient), "%s", "error");
+		llc_necall(::llc::clientDisconnect(udpClient), "%s", "error");
 		output												= responseRemote;
 	}
 	return 0;
@@ -66,11 +66,11 @@ static int											cgiMain				(int argc, char** argv, char**envv)	{
 	::bro::SBigEye											appState			= {};
 	::bro::bigEyeLoadConfig(appState, "bigeye.json");
 
-	::gpk::SCGIRuntimeValues								runtimeValues		= {};
-	gpk_necall(::gpk::cgiRuntimeValuesLoad(runtimeValues, {(const char**)argv, (uint32_t)argc}), "%s", "Failed to load cgi runtime values.");
+	::llc::SCGIRuntimeValues								runtimeValues		= {};
+	llc_necall(::llc::cgiRuntimeValuesLoad(runtimeValues, {(const char**)argv, (uint32_t)argc}), "%s", "Failed to load cgi runtime values.");
 	{
-		gpk_necall(::gpk::tcpipInitialize(), "%s", "Failed to initialize network subsystem.");
-		::gpk::array_pod<char>									html				= {};
+		llc_necall(::llc::tcpipInitialize(), "%s", "Failed to initialize network subsystem.");
+		::llc::array_pod<char>									html				= {};
 		if errored(::cgiBootstrap(runtimeValues, appState, html)) {
 			printf("%s\r\n", "Content-Type: text/html"
 				"\r\nCache-Control: no-store"
@@ -86,18 +86,18 @@ static int											cgiMain				(int argc, char** argv, char**envv)	{
 			);
 			html.push_back('\0');
 			printf("%s", html.begin());
-#ifdef GPK_WINDOWS
+#ifdef LLC_WINDOWS
 			OutputDebugStringA(html.begin());
 #endif
 		}
-		gpk_necall(::gpk::tcpipShutdown(), "Failed to shut down network subsystem. %s", "Why??!?");
+		llc_necall(::llc::tcpipShutdown(), "Failed to shut down network subsystem. %s", "Why??!?");
 	}
 	return 0;
 }
 
 int													main				(int argc, char** argv, char**envv)	{ return ::cgiMain(argc, argv, envv); }
 
-#ifdef GPK_WINDOWS
+#ifdef LLC_WINDOWS
 #include <Windows.h>
 int WINAPI											WinMain				
 	(	_In_		HINSTANCE	hInstance

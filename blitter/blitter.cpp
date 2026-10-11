@@ -1,34 +1,34 @@
 #include "blitter.h"
 
-#include "gpk_stdstring.h"
-#include "gpk_process.h"
-#include "gpk_storage.h"
+#include "llc_stdstring.h"
+#include "llc_process.h"
+#include "llc_storage.h"
 
-#include "gpk_json_expression.h"
+#include "llc_json_expression.h"
 
-static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyValConstString> & queryString, int64_t & detail)				{
+static	::llc::error_t					loadDetail					(const ::llc::view_array<::llc::TKeyValConstString> & queryString, int64_t & detail)				{
 	for(uint32_t iKey = 0; iKey < queryString.size(); ++iKey) {
-		if(queryString[iKey].Key == ::gpk::view_const_string{"PATH_INFO"}) {
+		if(queryString[iKey].Key == ::llc::view_const_string{"PATH_INFO"}) {
 			uint64_t									_detail						= (uint64_t)-1LL;
-			::gpk::stoull({&queryString[iKey].Val[1], queryString[iKey].Val.size() - 1}, &_detail);
+			::llc::stoull({&queryString[iKey].Val[1], queryString[iKey].Val.size() - 1}, &_detail);
 			detail									= (int32_t)_detail;
 		}
 	}
 	return 0;
 }
 
-::gpk::error_t							razor::loadConfig			(::razor::SRazorAppV0 & appState, const ::gpk::view_const_string & jsonFileName, const ::gpk::view_array<::gpk::TKeyValConstString> & queryString, const ::gpk::view_array<::gpk::TKeyValConstString> & environViews)	{
-	gpk_necall(::gpk::jsonFileRead(appState.Config, jsonFileName), "Failed to load configuration file: %s.", jsonFileName.begin());
-	gpk_necall(::bro::configLoad(appState.BigBro, appState.Config.Reader), "%s", "Failed to load query.");
-	gpk_necall(::bro::queryLoad	(appState.BigBro.Query, queryString), "%s", "Failed to load query.");
-	gpk_necall(::loadDetail(environViews, appState.BigBro.Query.Detail), "%s", "Failed to load query.");
+::llc::error_t							razor::loadConfig			(::razor::SRazorAppV0 & appState, const ::llc::view_const_string & jsonFileName, const ::llc::view_array<::llc::TKeyValConstString> & queryString, const ::llc::view_array<::llc::TKeyValConstString> & environViews)	{
+	llc_necall(::llc::jsonFileRead(appState.Config, jsonFileName), "Failed to load configuration file: %s.", jsonFileName.begin());
+	llc_necall(::bro::configLoad(appState.BigBro, appState.Config.Reader), "%s", "Failed to load query.");
+	llc_necall(::bro::queryLoad	(appState.BigBro.Query, queryString), "%s", "Failed to load query.");
+	llc_necall(::loadDetail(environViews, appState.BigBro.Query.Detail), "%s", "Failed to load query.");
 	return 0;
 }
 
-::gpk::error_t							processThisTable			(const ::gpk::view_const_string & missPath, const ::gpk::view_array<const ::bro::TKeyValJSONDBV0>	& databases, ::gpk::view_const_string & tableName)	{
-	::gpk::array_obj<::gpk::view_const_string>	fieldsToExpand;
-	::gpk::split(missPath, '.', fieldsToExpand);
-	const ::gpk::view_const_string				fieldToExpand				= fieldsToExpand[fieldsToExpand.size() - 1];
+::llc::error_t							processThisTable			(const ::llc::view_const_string & missPath, const ::llc::view_array<const ::bro::TKeyValJSONDBV0>	& databases, ::llc::view_const_string & tableName)	{
+	::llc::array_obj<::llc::view_const_string>	fieldsToExpand;
+	::llc::split(missPath, '.', fieldsToExpand);
+	const ::llc::view_const_string				fieldToExpand				= fieldsToExpand[fieldsToExpand.size() - 1];
 	for(uint32_t iTable = 0; iTable < databases.size(); ++iTable) {
 		const ::bro::TKeyValJSONDBV0					& dbKeyVal					= databases[iTable];
 		if(dbKeyVal.Key == fieldToExpand) {
@@ -45,21 +45,21 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 	return -1;
 }
 
-::gpk::error_t							razor::processQuery						
-	( ::gpk::array_obj<::bro::TKeyValJSONDBV0>	& databases
+::llc::error_t							razor::processQuery						
+	( ::llc::array_obj<::bro::TKeyValJSONDBV0>	& databases
 	, const ::bro::SQuery						& query
-	, const ::gpk::view_const_string			& databaseName
-	, ::gpk::array_pod<char_t>					& output
+	, const ::llc::view_const_string			& databaseName
+	, ::llc::array_pod<char_t>					& output
 	) {
 
 	char										strFormat	[1024]			= {};
 	char										filename	[1024]			= {};
-	::gpk::array_obj<::bro::TCacheMissRecord>	cacheMisses;			
+	::llc::array_obj<::bro::TCacheMissRecord>	cacheMisses;			
 	do {
-		gpk_necall(::bro::generate_output_for_db(databases, query, databaseName, output, cacheMisses), "%s", "Failed to load razor databases.");
+		llc_necall(::bro::generate_output_for_db(databases, query, databaseName, output, cacheMisses), "%s", "Failed to load razor databases.");
 		for(uint32_t iTableMiss = 0; iTableMiss < cacheMisses.size(); ++iTableMiss) {
 			const ::bro::TCacheMissRecord				& tableMiss					= cacheMisses[iTableMiss];
-			::gpk::view_const_string					tableName;
+			::llc::view_const_string					tableName;
 			int32_t										indexDB						= ::processThisTable(tableMiss.Key, databases, tableName);
 			if(-1 == indexDB)
 				continue;
@@ -80,7 +80,7 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 					newDB.Val.Range.Offset					= iBlockCurrent * newDB.Val.BlockSize;
 					sprintf_s(strFormat, "%%.%us.%llu.json", newDB.Key.size(), iBlockCurrent);
 					sprintf_s(filename, strFormat, newDB.Key.begin());
-					::gpk::jsonFileRead(newDB.Val.Table, filename);
+					::llc::jsonFileRead(newDB.Val.Table, filename);
 				}
 				// Resolve expression
 			}
@@ -90,11 +90,11 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 }
 
 
-::gpk::error_t							razorprocessQueryV2
-	( ::gpk::array_obj<::bro::TKeyValJSONDBV0>	& databases
+::llc::error_t							razorprocessQueryV2
+	( ::llc::array_obj<::bro::TKeyValJSONDBV0>	& databases
 	, const ::bro::SQuery						& query
-	, const ::gpk::view_const_string			& databaseName
-	, ::gpk::array_pod<char_t>					& output
+	, const ::llc::view_const_string			& databaseName
+	, ::llc::array_pod<char_t>					& output
 	) {
 
 	char										strFormat	[1024]			= {};
@@ -102,12 +102,12 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 
 
 
-	::gpk::array_obj<::bro::TCacheMissRecord>	cacheMisses;			
+	::llc::array_obj<::bro::TCacheMissRecord>	cacheMisses;			
 	do {
-		gpk_necall(::bro::generate_output_for_db(databases, query, databaseName, output, cacheMisses), "%s", "Failed to load razor databases.");
+		llc_necall(::bro::generate_output_for_db(databases, query, databaseName, output, cacheMisses), "%s", "Failed to load razor databases.");
 		for(uint32_t iTableMiss = 0; iTableMiss < cacheMisses.size(); ++iTableMiss) {
 			const ::bro::TCacheMissRecord				& tableMiss					= cacheMisses[iTableMiss];
-			::gpk::view_const_string					tableName;
+			::llc::view_const_string					tableName;
 			int32_t										indexDB						= ::processThisTable(tableMiss.Key, databases, tableName);
 			if(-1 == indexDB)
 				continue;
@@ -128,7 +128,7 @@ static	::gpk::error_t					loadDetail					(const ::gpk::view_array<::gpk::TKeyVal
 					newDB.Val.Range.Offset					= iBlockCurrent * newDB.Val.BlockSize;
 					sprintf_s(strFormat, "%%.%us.%llu.sson", newDB.Key.size(), iBlockCurrent);
 					sprintf_s(filename, strFormat, newDB.Key.begin());
-					::gpk::jsonFileRead(newDB.Val.Table, filename);
+					::llc::jsonFileRead(newDB.Val.Table, filename);
 				}
 				// Resolve expression
 			}

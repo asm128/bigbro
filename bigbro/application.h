@@ -1,38 +1,38 @@
 #include "bigbro.h"
 
-#include "gpk_framework.h"
-#include "gpk_udp_server.h"
+#include "llc_framework.h"
+#include "llc_udp_server.h"
 
 #ifndef APPLICATION_H_2078934982734
 #define APPLICATION_H_2078934982734
 
 namespace bba // bigbroapp
 {
-	typedef ::gpk::array_obj<::gpk::ptr_obj<::gpk::SUDPConnectionMessage>>	TUDPReceiveQueue;
-	typedef ::gpk::array_obj<::gpk::array_pod<char_t>>						TUDPResponseQueue;
+	typedef ::llc::array_obj<::llc::ptr_obj<::llc::SUDPConnectionMessage>>	TUDPReceiveQueue;
+	typedef ::llc::array_obj<::llc::array_pod<char_t>>						TUDPResponseQueue;
 
 	GDEFINE_ENUM_TYPE	(CONNECTION_STATE, uint8_t);
 	GDEFINE_ENUM_VALUE	(CONNECTION_STATE, IDLE			, 0);
 	GDEFINE_ENUM_VALUE	(CONNECTION_STATE, PROCESSING	, 1);
 	struct SServerAsync {
-		::gpk::SUDPServer														UDPServer							= {};
-		::gpk::array_obj<::bba::TUDPReceiveQueue>								ReceivedPerClient					= {};
-		::gpk::array_obj<::bba::TUDPResponseQueue>								ClientResponses						= {};
-		::gpk::array_obj<::bba::TUDPResponseQueue>								PartialResults						= {};
-		::gpk::array_obj<::gpk::array_pod<CONNECTION_STATE>>					RequestStates						= {};
+		::llc::SUDPServer														UDPServer							= {};
+		::llc::array_obj<::bba::TUDPReceiveQueue>								ReceivedPerClient					= {};
+		::llc::array_obj<::bba::TUDPResponseQueue>								ClientResponses						= {};
+		::llc::array_obj<::bba::TUDPResponseQueue>								PartialResults						= {};
+		::llc::array_obj<::llc::array_pod<CONNECTION_STATE>>					RequestStates						= {};
 	};
 
-	typedef ::gpk::SKeyVal<::gpk::view_const_string, ::gpk::ptr_obj<::bba::SServerAsync>>	
+	typedef ::llc::SKeyVal<::llc::view_const_string, ::llc::ptr_obj<::bba::SServerAsync>>	
 																			TKeyValServerAsync;
-	typedef ::gpk::SRenderTarget<::gpk::SColorBGRA, uint32_t>				TRenderTarget;
+	typedef ::llc::SRenderTarget<::llc::SColorBGRA, uint32_t>				TRenderTarget;
 
 	struct SApplication {
-		::gpk::SFramework														Framework;
-		::gpk::ptr_obj<::bba::TRenderTarget>									Offscreen							= {};
+		::llc::SFramework														Framework;
+		::llc::ptr_obj<::bba::TRenderTarget>									Offscreen							= {};
 
 		::bro::SBigBroV0															BigBro								= {};
 		::bba::SServerAsync														ServerAsync							= {};
-		::gpk::array_obj<::bba::TKeyValServerAsync>								Servers								= {};
+		::llc::array_obj<::bba::TKeyValServerAsync>								Servers								= {};
 
 		uint16_t																BasePort							= 0;
 		int16_t																	Adapter								= 0;
@@ -42,11 +42,11 @@ namespace bba // bigbroapp
 		::std::mutex															LockGUI;
 		::std::mutex															LockRender;
 
-																				SApplication						(::gpk::SRuntimeValues& runtimeValues)	: Framework(runtimeValues, "bigbro.json")	{}
+																				SApplication						(::llc::SRuntimeValues& runtimeValues)	: Framework(runtimeValues, "bigbro.json")	{}
 	};
 
-	::gpk::error_t															loadConfig							(::bba::SApplication & app);
-	::gpk::error_t															updateCRUDServer					(::bro::SBigBroV0 & appState, ::bba::SServerAsync & serverAsync);
+	::llc::error_t															loadConfig							(::bba::SApplication & app);
+	::llc::error_t															updateCRUDServer					(::bro::SBigBroV0 & appState, ::bba::SServerAsync & serverAsync);
 } // namespace
 
 
